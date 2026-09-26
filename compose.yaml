@@ -1,0 +1,66 @@
+name: semaphore-flags
+
+# Local development only. Credentials below are throwaway defaults, not secrets.
+#   docker compose up --build                  api + db + demo-client
+#   docker compose --profile cache up --build  + redis (set API_REDIS_URL=redis://redis:6379)
+
+services:
+  api:
+    build: .
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      HTTP_ADDR: 0.0.0.0:8080
+      DATABASE_URL: postgres://${POSTGRES_USER:-semaphore}:${POSTGRES_PASSWORD:-semaphore}@db:5432/${POSTGRES_DB:-semaphore}
+      REDIS_URL: ${API_REDIS_URL:-}
+    ports:
+      - "${API_PORT:-8080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-semaphore}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-semaphore}
+      POSTGRES_DB: ${POSTGRES_DB:-semaphore}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    profiles: ["cache"]
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  demo-client:
+    image: node:22-alpine
+    working_dir: /demo
+    command: ["node", "demo-client.mjs"]
+    environment:
+      SEMAPHORE_URL: http://api:8080
+      SEMAPHORE_EVALUATE_KEY: ${DEMO_EVALUATE_KEY:-}
+    volumes:
+      - ./scripts/demo-client.mjs:/demo/demo-client.mjs:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  db-data:

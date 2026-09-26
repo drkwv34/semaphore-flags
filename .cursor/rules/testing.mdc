@@ -1,0 +1,25 @@
+---
+description: Testing strategy - unit goldens, contract fixtures, integration, CI gates
+globs: "**/*.test.ts, test/**, contracts/**, vitest.config.ts"
+alwaysApply: false
+---
+
+# Testing
+
+Full detail: `docs/architecture/testing-strategy.md`.
+
+- Unit tests are colocated: `src/**/foo.test.ts`. Contract tests in `test/contract/`, fixtures in
+  `contracts/`. Integration tests in `test/integration/` against real Postgres.
+- Evaluate goldens: `contracts/evaluate/bucket-vectors.json` (≥ 10 vectors, includes bucket 0 and
+  99). Never edit existing vectors; a diff means bucketing broke.
+- Algorithm tests are table-driven, one row per FR-EVAL-002 branch, incl. percentage 0/1/100 and
+  missing attributes.
+- Contract fixtures (`contracts/evaluate/*.json`: `name`, `setup`, `request`, `response`) run
+  through `app.inject` with an in-memory snapshot source and deep-equal the response. Changing an
+  expected response is an API change → OpenSpec delta.
+- Integration must cover: mutation visible to evaluate (cache on/off), audit in same tx, audit
+  UPDATE rejected by DB, Redis down → evaluate 200, duplicate create race → 201 + 409.
+- Mock only infrastructure ports (snapshot source, cache client). Never mock domain functions.
+- Deterministic: fixed salts/ids, injected clock, no sleeps.
+- Every bug fix ships with a regression test.
+- Run `pnpm test` (unit + contract) before pushing.

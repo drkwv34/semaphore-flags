@@ -1,0 +1,39 @@
+---
+description: Postgres access, transactions, audit immutability and forward-only migrations
+globs: src/store/**/*.ts, src/services/**/*.ts, migrations/**
+alwaysApply: false
+---
+
+# Persistence and transactions
+
+Full detail: `docs/architecture/transactions-and-consistency.md`,
+`docs/architecture/integrations.md`.
+
+## SQL
+
+- `pg` with `$n` placeholders only. No string-concatenated SQL, no ORM.
+- Repositories take a `Tx` argument, never begin/commit, and return domain types.
+- Translate driver errors at the repository boundary: `23505` → `ConflictError`,
+  `23514` → `ValidationError`; rethrow the rest.
+
+## Transactions
+
+- One admin request = one transaction, opened in `src/services` via `uow.run`.
+- Lock the aggregate root (`SELECT … FROM flags … FOR UPDATE`) before reading `before` state.
+- Insert the `audit_events` row in the same transaction as the change. No-op updates write no
+  audit row.
+- No Redis or HTTP calls inside a transaction.
+- After commit and before the 2xx: invalidate `flags:{project_id}:{env}` for affected envs. If
+  invalidation fails: log `warn`, bump the failure metric, still succeed.
+
+## Audit
+
+- Only `insert` and `list` exist for audit. Never write UPDATE/DELETE against `audit_events`.
+- DB enforces it: app role has INSERT/SELECT only; trigger rejects UPDATE/DELETE.
+- No secrets or key hashes in `before_json`/`after_json`.
+
+## Migrations
+
+- `migrations/NNNN_description.sql`, forward-only, never edited after merge.
+- Mirror invariants with constraints (`CHECK`, `UNIQUE`, FKs). `timestamptz` everywhere.
+- Expand → backfill → switch → contract across separate migrations for live changes.

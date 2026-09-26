@@ -1,0 +1,44 @@
+---
+description: semaphore-flags project context, scope guards, workflow and git conventions
+alwaysApply: true
+---
+
+# semaphore-flags
+
+Feature-flag + kill-switch service. TypeScript (strict, ESM, Node 22) · Fastify 5 · Zod ·
+Postgres 16 · optional Redis 7 · Vitest · OpenAPI · pnpm.
+
+Read before non-trivial work: `openspec/project.md`, `docs/architecture/README.md`, and the
+relevant `openspec/specs/<capability>/spec.md`.
+
+## Workflow
+
+- OpenSpec gate: new endpoints, migrations, evaluate semantics, error codes, cache keys, metrics
+  or contract fixtures require an approved change in `openspec/changes/<change-id>/` first.
+  Follow `openspec/AGENTS.md`.
+- Cite SRS ids (`FR-EVAL-002`) in proposals, tests and PR descriptions.
+- Before declaring done: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`.
+- Keep `docs/architecture/` and `.cursor/rules/` in sync when a convention changes.
+
+## Git
+
+- Conventional commits with intent: `feat(evaluate): bucket users by sha256 of salt:key:id`.
+  Types: feat, fix, refactor, test, docs, chore, ci, build, perf.
+- Branches: `chore/…`, `feat/…`, `test/…`, `docs/…`. One theme per PR; small PRs.
+- Author/committer is the repo owner's configured identity. Never add AI/agent authors or
+  `Co-authored-by` trailers.
+- Never commit secrets or `.env`. Never rewrite published history.
+
+## Scope guards (do not build)
+
+Admin SPA, multivariate/string variants, experimentation stats, streaming or native SDKs, rule
+builder UI, multi-region, ORM, DI container. HTTP is the SDK.
+
+## Non-negotiables
+
+- `src/domain` is pure: no I/O, no Fastify, no `pg`/Redis, no imports from outer layers.
+- Evaluate on a missing flag returns `200 { value: false, reason: "not_found" }`.
+- Evaluate never fails because Redis is down.
+- Admin mutation + its audit row share one transaction; cache invalidated before 2xx.
+- Audit rows are never updated or deleted.
+- Parameterized SQL only.
