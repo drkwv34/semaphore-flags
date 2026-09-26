@@ -1,0 +1,38 @@
+---
+description: HTTP edge conventions - routes, schemas, auth, error mapping, OpenAPI
+globs: src/api/**/*.ts
+alwaysApply: false
+---
+
+# HTTP edge
+
+Full detail: `docs/architecture/error-handling.md`, `docs/architecture/api-conventions.md`.
+
+## Routes
+
+- Product routes under `/v1`; ops routes unversioned. JSON fields `snake_case`.
+- Every route declares JSON schemas for input and `response` (success + error envelope);
+  `additionalProperties: false` on bodies. Schemas feed validation, serialization and OpenAPI.
+- Handlers: parse → service call → map to response. No SQL, no business logic.
+- Auth: `Authorization: Bearer <key>`; route declares required key type (`admin` | `evaluate`).
+  401 missing/invalid/revoked, 403 wrong type. `project_id` comes from the key only.
+
+## Errors
+
+- Throw typed errors (`ValidationError`, `NotFoundError`, `ConflictError`, `UnauthorizedError`,
+  `ForbiddenError`). Never call `reply.status(4xx|5xx)` in handlers.
+- `src/api/errors.ts` is the only place that maps errors to status codes. Add new mappings there
+  plus a test in `errors.test.ts`.
+- Envelope: `{ error: { code, message, request_id, fields? } }`. Clients branch on `code`.
+- Unknown errors → 500 `INTERNAL` with a generic message; log the real error.
+- Evaluate: missing flag is 200 `not_found`, never 404. Batch returns per-key entries.
+
+## Logging
+
+- Use `request.log` (carries `request_id`). Never `console.*`.
+- Never log bodies, raw keys, `user.attrs`.
+
+## OpenAPI
+
+- `@fastify/swagger` → `/openapi.json`, `@fastify/swagger-ui` → `/docs`.
+- Regenerate `contracts/openapi/openapi.json` when routes change; CI fails on drift.

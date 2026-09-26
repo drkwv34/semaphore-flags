@@ -1,0 +1,45 @@
+---
+description: Domain modeling rules and the normative evaluate algorithm
+globs: src/domain/**/*.ts
+alwaysApply: false
+---
+
+# Domain and evaluation
+
+Full detail: `docs/architecture/domain-model.md`.
+
+## Purity
+
+- Deterministic functions over plain data. No I/O, clock, randomness, logging or env access;
+  pass these in if needed.
+- No exceptions on the evaluate path. Admin-path invariant checks return or throw
+  `ValidationError` from `src/domain/errors.ts`.
+- Closed sets are `as const` arrays with derived unions; `switch` must be exhaustive.
+
+## Invariants
+
+- Flag key `^[a-z][a-z0-9_]{1,63}$`; env key `^[a-z][a-z0-9-]{1,31}$`; user id ≤ 128 chars.
+- `percentage` integer 0–100. Rule priorities unique per env config; evaluated ascending.
+- Rule ops: `eq neq in not_in contains gt gte lt lte`. `in`/`not_in` need a non-empty array.
+  Numeric ops compare numbers only; no implicit coercion.
+- Missing attribute → predicate `false`. Never throw.
+
+## Evaluate algorithm (FR-EVAL-002) — implement exactly
+
+```
+missing flag            → { value: false, reason: "not_found" }
+archived flag           → { value: false, reason: "archived" }
+env.enabled === false   → { value: default_value, reason: "disabled" }   // kill switch
+first matching rule     → { value: rule.serve, reason: "rule_match" }
+bucket < percentage     → { value: true,  reason: "percentage_in" }
+otherwise               → { value: false, reason: "percentage_out" }
+
+bucket = readUInt32BE(sha256(`${salt}:${flag_key}:${user.id}`), 0) % 100
+```
+
+- Reasons come only from `EVALUATION_REASONS`. Adding/renaming one is a BREAKING API change.
+- `variant` is `"on"` when `value` is true, else `"off"`.
+- Hot path: operate on the compiled snapshot (rules pre-sorted, values pre-typed). No per-call
+  sorting, JSON parsing, regex compilation or closures allocated per rule.
+- Budget: in-process p99 < 10ms for ≤ 20 rules (NFR-PERF-001).
+- Golden bucket vectors in `contracts/evaluate/bucket-vectors.json` must never change.

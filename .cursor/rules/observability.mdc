@@ -1,0 +1,31 @@
+---
+description: Structured logging, redaction, metrics naming and health endpoints
+globs: src/**/*.ts
+alwaysApply: false
+---
+
+# Observability
+
+Full detail: `docs/architecture/observability.md`.
+
+## Logs
+
+- pino via Fastify, JSON to stdout. `request.log` inside requests, `app.log` for lifecycle only.
+- Standard field names: `request_id`, `project_id`, `flag_key`, `reason`, `duration_ms`.
+- Levels: `error` 5xx/unexpected · `warn` degraded deps · `info` request completed, mutation
+  committed, 4xx · `debug` cache hit/miss, per-flag decisions.
+- Never log: raw keys, key hashes, `Authorization`/`X-Api-Key`, request/response bodies,
+  `user.attrs`. `user.id` only at `debug`.
+- Rate-limit repeated degraded-dependency warnings (1 per 10s per dependency).
+
+## Metrics
+
+- Prefix `semaphore_`, base units in names, counters end `_total`.
+- Required: `semaphore_evaluate_total{reason}`, `semaphore_evaluate_duration_seconds`,
+  `semaphore_admin_mutations_total{action}`.
+- Labels only from closed enums. Never label by flag key, project id or user id.
+
+## Health
+
+- `/healthz` liveness, no dependency calls. `/readyz` Postgres only. `/healthz/deps` detail
+  incl. Redis. Redis never affects readiness.

@@ -1,0 +1,23 @@
+---
+description: Optional Redis snapshot cache - keys, TTL, invalidation, degrade behavior
+globs: src/cache/**/*.ts
+alwaysApply: false
+---
+
+# Redis cache (optional)
+
+Full detail: `docs/architecture/integrations.md`,
+`docs/architecture/transactions-and-consistency.md`.
+
+- Enabled only when `REDIS_URL` is set; otherwise a no-op implementation of the same interface.
+  Call sites never branch on whether Redis is configured.
+- Key `flags:{project_id}:{env}` → JSON `CompiledEnvSnapshot` with `schema_version`; TTL 60s.
+  Version mismatch = miss.
+- Fail fast: `enableOfflineQueue: false`, `maxRetriesPerRequest: 0`, connect 500ms, command 50ms.
+  Circuit opens after 3 consecutive failures for 5s.
+- Any Redis error on read → log `warn` (rate-limited), count `result="error"`, load from
+  Postgres. Evaluate must never fail because of Redis (NFR-REL-001).
+- Singleflight concurrent misses per key (FR-CACHE-003).
+- Only the read path writes to the cache. Admin mutations only delete keys, after commit.
+- Every new cache key needs a matching invalidation path and an integration test proving a
+  mutation is visible to evaluate immediately after the 2xx.

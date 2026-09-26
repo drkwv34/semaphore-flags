@@ -1,0 +1,44 @@
+---
+description: Layering, dependency direction and design patterns for src/
+globs: src/**/*.ts
+alwaysApply: false
+---
+
+# Layering and patterns
+
+Full rationale: `docs/architecture/README.md`, `docs/architecture/domain-model.md`.
+
+```
+src/api       → routes, auth hooks, JSON schemas, error mapper, composition root (buildApp)
+src/services  → use cases: transaction + audit + cache invalidation
+src/domain    → pure types + functions (evaluate/, rules/, errors.ts)
+src/store     → Postgres repositories (pg, parameterized SQL)
+src/cache     → optional Redis snapshot cache
+src/metrics   → prom-client registry + metric definitions
+```
+
+Dependency rule: `api → services → domain`; `services → store | cache | metrics`;
+`store | cache → domain` (types only). `domain` imports nothing outward (ESLint enforced).
+
+## Patterns in use
+
+- **Composition root**: `buildApp(deps)` in `src/api/app.ts` wires concrete adapters; tests pass
+  fakes. Constructor/parameter injection only, no container, no module-level singletons.
+- **Repository** (`src/store`): one module per aggregate; takes a `Tx`; returns domain types.
+- **Unit of work** (`src/services`): `uow.run(async (tx) => …)` owns begin/commit/rollback.
+- **Compiled snapshot / read model**: evaluate reads `CompiledEnvSnapshot`, never entities.
+- **Decorator**: `CachedSnapshotSource` wraps `PostgresSnapshotSource` behind `SnapshotSource`.
+- **Singleflight**: one in-flight snapshot load per cache key per process.
+- **Error mapper at the edge**: only `src/api/errors.ts` turns errors into HTTP.
+
+## Do
+
+- Keep handlers thin: validate (schema) → call service → shape response.
+- Prefer plain objects + functions. Classes only for errors and stateful adapters.
+- Use `readonly` and `as const` for data that must not change; branded ids for keys.
+
+## Don't
+
+- Import Fastify types outside `src/api`.
+- Put SQL in services or handlers, or business rules in repositories.
+- Add a new top-level folder under `src/` without updating `docs/architecture/README.md`.
