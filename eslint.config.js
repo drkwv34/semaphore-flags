@@ -46,7 +46,7 @@ export default tseslint.config(
               message: "src/domain is pure. Do I/O in src/store, src/cache or src/api.",
             },
             {
-              group: ["**/api/**", "**/store/**", "**/cache/**", "**/metrics/**"],
+              group: ["**/api/**", "**/services/**", "**/store/**", "**/cache/**", "**/metrics/**"],
               message: "src/domain must not depend on outer layers.",
             },
           ],
