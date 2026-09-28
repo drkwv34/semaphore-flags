@@ -39,14 +39,14 @@ openspec update --tools cursor --force --no-animation
 
 ## Workflow in Cursor
 
-| Step | Cursor | Skill |
-| ---- | ------ | ----- |
-| Propose a change | `/opsx-propose` | `openspec-propose` |
-| Implement from `tasks.md` | `/opsx-apply` | `openspec-apply-change` |
-| Update an in-flight change | `/opsx-update` | `openspec-update-change` |
-| Explore / clarify | `/opsx-explore` | `openspec-explore` |
-| Sync specs from changes | `/opsx-sync` | `openspec-sync-specs` |
-| Archive after merge | `/opsx-archive` | `openspec-archive-change` |
+| Step                       | Cursor          | Skill                     |
+| -------------------------- | --------------- | ------------------------- |
+| Propose a change           | `/opsx-propose` | `openspec-propose`        |
+| Implement from `tasks.md`  | `/opsx-apply`   | `openspec-apply-change`   |
+| Update an in-flight change | `/opsx-update`  | `openspec-update-change`  |
+| Explore / clarify          | `/opsx-explore` | `openspec-explore`        |
+| Sync specs from changes    | `/opsx-sync`    | `openspec-sync-specs`     |
+| Archive after merge        | `/opsx-archive` | `openspec-archive-change` |
 
 Typical loop:
 
