@@ -1,0 +1,32 @@
+schema: spec-driven
+
+context: |
+  # semaphore-flags
+
+  Feature-flag and kill-switch service: environments (dev/staging/prod), boolean flags with
+  percentage rollouts, attribute-based targeting, an immutable audit log, and an SDK-style HTTP
+  evaluate API. Value is in evaluation correctness, auditability, cache invalidation, and documented
+  client fallback—not feature breadth.
+
+  Stack: TypeScript (strict), Node.js 22 LTS, ESM; Fastify 5; Zod; Postgres 16; optional Redis 7;
+  Vitest; OpenAPI 3; Docker Compose; pnpm.
+
+  Conventions (see `docs/architecture/` and `.cursor/rules/`):
+  - Layering: api → domain ← store/cache/metrics; `src/domain` is pure (no I/O).
+  - Evaluate on missing flag: `200 { value: false, reason: "not_found" }`.
+  - Admin mutation + audit row: same Postgres transaction; cache invalidate after commit, before 2xx.
+  - Forward-only SQL migrations; audit rows never updated or deleted.
+  - Cite SRS ids (`FR-*`, `NFR-*`) in proposals and spec deltas.
+  - Conventional commits; branches `chore/…`, `feat/…`, `test/…`, `docs/…`.
+
+  Out of scope: multivariate variants, experimentation stats, streaming/native SDKs, rule-builder UI,
+  admin SPA as a Must, multi-region replication.
+
+  SRS baseline: `04-semaphore-flags-srs.md` (requirement traceability).
+
+rules:
+  proposal:
+    - Cite relevant SRS requirement ids (`FR-*`, `NFR-*`).
+    - List impacted capabilities and code paths under Impact.
+  tasks:
+    - Include a Verification section with concrete test commands or suites.

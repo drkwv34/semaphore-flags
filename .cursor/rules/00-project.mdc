@@ -8,14 +8,15 @@ alwaysApply: true
 Feature-flag + kill-switch service. TypeScript (strict, ESM, Node 22) · Fastify 5 · Zod ·
 Postgres 16 · optional Redis 7 · Vitest · OpenAPI · pnpm.
 
-Read before non-trivial work: `openspec/project.md`, `docs/architecture/README.md`, and the
+Read before non-trivial work: `openspec/config.yaml`, `docs/architecture/README.md`, and the
 relevant `openspec/specs/<capability>/spec.md`.
 
 ## Workflow
 
 - OpenSpec gate: new endpoints, migrations, evaluate semantics, error codes, cache keys, metrics
   or contract fixtures require an approved change in `openspec/changes/<change-id>/` first.
-  Follow `openspec/AGENTS.md`.
+  Use Fission OpenSpec: `/opsx-propose`, `/opsx-apply`, `openspec validate`, `/opsx-archive`
+  (see `openspec/README.md`).
 - Cite SRS ids (`FR-EVAL-002`) in proposals, tests and PR descriptions.
 - Before declaring done: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`.
 - Keep `docs/architecture/` and `.cursor/rules/` in sync when a convention changes.
