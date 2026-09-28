@@ -1,5 +1,8 @@
 # Project context — semaphore-flags
 
+> **Note:** Fission OpenSpec reads planning context from `openspec/config.yaml` (`context:`). This file
+> is kept for backward-compatible links; edit `config.yaml` for agent-facing project context.
+
 ## Purpose
 
 Feature-flag and kill-switch service: environments (dev/staging/prod), boolean flags with

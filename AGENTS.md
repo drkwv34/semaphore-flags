@@ -2,10 +2,11 @@
 
 Start here, in this order:
 
-1. `openspec/project.md` — what this service is and is not.
-2. `docs/architecture/README.md` — layers, request flows, decision log.
-3. `.cursor/rules/` — enforceable conventions (auto-attached by path in Cursor).
-4. `openspec/AGENTS.md` — how to propose, implement and archive a change.
+1. `openspec/config.yaml` — project context and OpenSpec artifact rules (Fission-AI OpenSpec).
+2. `openspec/project.md` — same context in prose (legacy link target).
+3. `docs/architecture/README.md` — layers, request flows, decision log.
+4. `.cursor/rules/` — enforceable conventions (auto-attached by path in Cursor).
+5. `openspec/README.md` — CLI install, `/opsx-*` Cursor commands, validate/archive loop.
 
 Commands:
 
@@ -15,6 +16,15 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 docker compose up --build            # api + db
 docker compose --profile cache up    # + redis
 ```
+
+OpenSpec (feature work):
+
+```sh
+npm install -g @fission-ai/openspec@latest
+openspec validate --all
+```
+
+In Cursor: `/opsx-propose` → `/opsx-apply` → `openspec validate <change-id> --strict` → `/opsx-archive`.
 
 Rules that are easy to get wrong:
 

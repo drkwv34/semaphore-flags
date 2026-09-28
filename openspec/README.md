@@ -1,36 +1,73 @@
-# OpenSpec
+# OpenSpec (Fission-AI)
 
-Spec-driven change process for semaphore-flags. Nothing non-trivial lands in `src/` without an
-approved change proposal here first.
+This repository uses the [Fission-AI OpenSpec](https://github.com/Fission-AI/OpenSpec) framework for
+spec-driven changes. The CLI is `@fission-ai/openspec`; Cursor is wired via generated skills and
+`/opsx-*` commands.
+
+## Layout
 
 ```
 openspec/
-  project.md              # product context, stack, conventions (read first)
-  AGENTS.md               # step-by-step workflow for humans and coding agents
-  specs/<capability>/     # source of truth: what the system does TODAY
+  config.yaml           # schema, project context, artifact rules (read by CLI + agents)
+  specs/<capability>/   # source of truth: what the system does today
     spec.md
-  changes/<change-id>/    # proposed deltas, one folder per change
-    proposal.md           # why + what + impact
-    tasks.md              # implementation checklist
-    design.md             # optional: trade-offs, only when non-obvious
-    specs/<capability>/spec.md   # ADDED / MODIFIED / REMOVED requirements
-  changes/archive/        # merged changes, prefixed with YYYY-MM-DD-
+  changes/<change-id>/  # active proposals (created by CLI or /opsx-propose)
+  changes/archive/      # merged changes (YYYY-MM-DD-<change-id>/)
+.cursor/
+  skills/openspec-*     # agent skills (propose, apply, archive, …)
+  commands/opsx-*.md    # slash commands (/opsx-propose, /opsx-apply, …)
 ```
 
-## Lifecycle
+Legacy `openspec/project.md` is retained for links from older docs; planning context lives in
+`openspec/config.yaml` (`context:`).
 
-1. **Propose** — create `changes/<change-id>/` (kebab-case, verb-led: `add-evaluate-core`).
-   Write `proposal.md`, `tasks.md` and spec deltas. Reference SRS requirement ids (`FR-EVAL-002`).
-2. **Approve** — the proposal is reviewed in its own PR (or the first commit of the feature PR,
-   titled `docs(openspec): propose <change-id>`). Approval = merged or explicitly acked in PR.
-3. **Implement** — work through `tasks.md`, checking items off. Code, tests and fixtures must
-   match the spec deltas; if reality diverges, update the proposal first.
-4. **Archive** — after merge, fold the deltas into `specs/<capability>/spec.md` and move the
-   change folder to `changes/archive/YYYY-MM-DD-<change-id>/`.
+## Install CLI
 
-If the [OpenSpec CLI](https://github.com/Fission-AI/OpenSpec) is installed, `openspec list`,
-`openspec validate <change-id> --strict` and `openspec archive <change-id>` automate steps 1–4.
-The layout here is compatible with it, but the CLI is not required.
+Node ≥ 20.19:
+
+```bash
+npm install -g @fission-ai/openspec@latest
+export PATH="$(npm prefix -g)/bin:$PATH"
+openspec --version
+```
+
+Refresh Cursor wiring after CLI upgrades:
+
+```bash
+openspec update --tools cursor --force --no-animation
+```
+
+## Workflow in Cursor
+
+| Step | Cursor | Skill |
+| ---- | ------ | ----- |
+| Propose a change | `/opsx-propose` | `openspec-propose` |
+| Implement from `tasks.md` | `/opsx-apply` | `openspec-apply-change` |
+| Update an in-flight change | `/opsx-update` | `openspec-update-change` |
+| Explore / clarify | `/opsx-explore` | `openspec-explore` |
+| Sync specs from changes | `/opsx-sync` | `openspec-sync-specs` |
+| Archive after merge | `/opsx-archive` | `openspec-archive-change` |
+
+Typical loop:
+
+1. **Propose** — `/opsx-propose` (or `openspec new change <id>`) creates `changes/<change-id>/` with
+   `proposal.md`, `tasks.md`, optional `design.md`, and spec deltas under `changes/.../specs/`.
+2. **Approve** — review in PR; approval = merged or explicitly acknowledged.
+3. **Apply** — `/opsx-apply`; tick `tasks.md`; no non-trivial `src/` work without an approved change.
+4. **Validate** — `openspec validate <change-id> --strict` (and `openspec validate --all` before merge).
+5. **Archive** — `/opsx-archive` or `openspec archive <change-id> --yes` folds deltas into
+   `specs/<capability>/spec.md` and moves the folder to `changes/archive/`.
+
+## CLI cheatsheet
+
+```bash
+openspec list                    # active changes
+openspec list --specs            # capabilities
+openspec validate --all          # all specs + changes
+openspec validate <id> --strict  # one change
+openspec show <capability> --type spec
+openspec context --json          # resolved root + config context
+```
 
 ## Capabilities
 
@@ -44,3 +81,6 @@ The layout here is compatible with it, but the CLI is not required.
 | `caching`         | FR-CACHE-001..004       |
 | `ops`             | FR-OPS-001..003, FR-ERR |
 | `client-guidance` | FR-DOC-001              |
+
+Capability specs currently hold structural placeholders until the first feature changes are proposed,
+implemented, and archived into `specs/`.
