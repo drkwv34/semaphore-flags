@@ -19,7 +19,7 @@ non-negotiable (`docs/architecture/`, `.cursor/rules/`).
 **Non-Goals:**
 
 - node-pg-migrate / Flyway / ORM; audit tables; flag/evaluate algorithm; Redis cache; metrics;
-  OpenAPI drift gate; changing existing CI job *names* by deleting them.
+  OpenAPI drift gate; changing existing CI job _names_ by deleting them.
 
 ## Decisions
 
@@ -76,12 +76,12 @@ clarity (lesson from Day 1). Product routes require `Authorization: Bearer <key>
 
 `src/cli.ts` is the binary (`package.json` `"bin": { "semaphore": "./dist/cli.js" }`). Commands:
 
-| argv | behavior |
-| --- | --- |
-| `migrate` | apply SQL |
-| `seed` | idempotent demo project `slug=demo` |
-| `projects create --name --slug` | create + default envs + two keys, print raw once |
-| `serve` | load config, pool, migrate is **not** implicit; listen |
+| argv                            | behavior                                               |
+| ------------------------------- | ------------------------------------------------------ |
+| `migrate`                       | apply SQL                                              |
+| `seed`                          | idempotent demo project `slug=demo`                    |
+| `projects create --name --slug` | create + default envs + two keys, print raw once       |
+| `serve`                         | load config, pool, migrate is **not** implicit; listen |
 
 `serve` does not auto-migrate: operators/Compose run `migrate` then `seed` then `serve` so a
 failed migration never binds the port. Compose `api` command: `node dist/cli.js migrate && node dist/cli.js seed && node dist/cli.js serve`.
