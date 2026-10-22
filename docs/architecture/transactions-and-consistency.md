@@ -73,5 +73,5 @@ that.
   `updated_at`. All timestamps are UTC `timestamptz`.
 - Constraints mirror domain invariants (`CHECK (percentage BETWEEN 0 AND 100)`, unique keys)
   as defense in depth.
-- The migration tool is chosen in the projects-keys-envs proposal (small in-repo runner vs
-  `node-pg-migrate`); either way it must satisfy the rules above.
+- The migrator is the in-repo runner `semaphore migrate` (`src/store/migrate.ts`): advisory
+  lock, one transaction per file, versions in `schema_migrations`. No down migrations.

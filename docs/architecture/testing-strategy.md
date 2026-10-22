@@ -12,8 +12,8 @@ skip coverage theater on glue code.
 | Integration | `test/integration/`                              | Postgres (+ Redis) service containers | every push             |
 | Bench       | `bench/*.bench.ts` + `scripts/bench-evaluate.sh` | in-process / Compose                  | soft gate              |
 
-Vitest projects: `unit`, `contract` (see `vitest.config.ts`); `integration` is added with the
-first migration.
+Vitest projects: `unit`, `contract`, `integration` (see `vitest.config.ts`). `pnpm test` runs
+unit + contract. `pnpm test:integration` needs `DATABASE_URL` and a Postgres 16 instance.
 
 ## Unit: evaluate goldens (NFR-REL-002)
 
@@ -67,6 +67,6 @@ first migration.
 
 ## CI gates (NFR-MAINT-001)
 
-`lint → typecheck → unit → contract → integration → build → image`. The scaffold wires the
-first steps with placeholders; each feature PR tightens the gate it touches. Contract tests are
-a required status check once fixtures exist.
+`lint → format → typecheck → unit → contract → integration → build → image`. Integration runs
+against a Postgres 16 service container. Contract tests are a required status check once
+fixtures exist.

@@ -20,7 +20,8 @@
 
 - Header: `Authorization: Bearer <api-key>`.
 - Two key types (FR-PROJ-002): `admin` (mutations + reads + audit) and `evaluate` (evaluate
-  routes only). Route-level `onRequest` hook declares the required type.
+  routes only). Route-level `preHandler` hook declares the required type. Admin keys may **not**
+  call evaluate routes (`403 FORBIDDEN`).
 - Key lookup by non-secret `prefix`, then constant-time comparison of the SHA-256 hash of the
   full key (keys are ≥ 256-bit random, so a slow KDF is unnecessary).
 - 401 for missing/invalid/revoked keys, 403 for a valid key of the wrong type. The response

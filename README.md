@@ -6,9 +6,9 @@
 Feature flags and kill switches with targeting rules, percentage rollouts, audit logs, and a fast
 HTTP evaluate API.
 
-> **Status: architecture first.** This repository currently holds conventions, layout, OpenSpec
-> and CI only. There is no flag CRUD or evaluate endpoint yet; those land as approved OpenSpec
-> changes.
+> **Status: architecture first.** Projects, API keys, environments, and health/ready are live.
+> Flag CRUD and the evaluate algorithm land as later OpenSpec changes. `POST /v1/evaluate`
+> authenticates, then returns `501 NOT_IMPLEMENTED`.
 
 ## Problem
 
@@ -50,31 +50,88 @@ openspec/      specs and change proposals
 Details: [`docs/architecture/`](docs/architecture/README.md). Conventions for coding agents:
 [`AGENTS.md`](AGENTS.md) and [`.cursor/rules/`](.cursor/rules).
 
+## Key model
+
+Two key types (NFR-SEC-001): **admin** (mutations and admin reads) and **evaluate** (evaluate
+routes only). Admin keys on evaluate routes are `403 FORBIDDEN`.
+
+Format: `sf_admin_<8 hex>_<64 hex>` or `sf_eval_<8 hex>_<64 hex>`. The stored `prefix`
+(`sf_admin_<8 hex>`) is used for lookup; only a SHA-256 hash of the full secret is persisted.
+Comparison is constant-time. Revoked keys (`revoked_at` set) are `401`. Raw keys are printed
+**once** at `semaphore projects create` / `semaphore seed` and never stored or logged.
+
+Send `Authorization: Bearer <raw-key>`. Missing, malformed, unknown, or revoked → `401`. Valid
+key of the wrong type → `403`. `project_id` comes only from the key.
+
 ## Run locally
 
 ```sh
 cp .env.example .env
-docker compose up --build                 # api, postgres, demo-client stub
-docker compose --profile cache up --build # + redis (set API_REDIS_URL=redis://redis:6379)
-curl localhost:8080/healthz
+docker compose up --build --wait
 ```
 
-Without Docker:
+The api container runs `migrate`, then `seed`, then `serve`. Seed prints keys **once** on the
+api logs (redact these if you share logs):
+
+```sh
+docker compose logs api
+# seed: project demo (…)
+# admin key (shown once): sf_admin_…
+# evaluate key (shown once): sf_eval_…
+```
+
+Copy the admin key and call the admin route:
+
+```sh
+ADMIN_KEY='sf_admin_…'   # paste from the seed log, first boot only
+curl -sS -H "Authorization: Bearer $ADMIN_KEY" http://localhost:8080/v1/projects/current
+# 200 {"id":"…","name":"Demo","slug":"demo","created_at":"…"}
+```
+
+Auth checks on that same route:
+
+```sh
+curl -sS -o /dev/null -w '%{http_code}\n' http://localhost:8080/v1/projects/current
+# 401
+curl -sS -o /dev/null -w '%{http_code}\n' \
+  -H "Authorization: Bearer $EVALUATE_KEY" http://localhost:8080/v1/projects/current
+# 403
+```
+
+Liveness always 200; readiness is Postgres only:
+
+```sh
+curl -sS http://localhost:8080/healthz
+curl -sS http://localhost:8080/readyz
+```
+
+Optional Redis:
+
+```sh
+docker compose --profile cache up --build --wait   # set API_REDIS_URL=redis://redis:6379
+```
+
+Without Docker (Postgres must already be up):
 
 ```sh
 pnpm install
-pnpm dev        # needs DATABASE_URL (see .env.example)
+pnpm migrate
+pnpm seed
+pnpm dev
 ```
+
+CLI: `semaphore migrate` · `semaphore seed` · `semaphore projects create --name --slug` ·
+`semaphore serve`.
 
 ## Tests and CI
 
 ```sh
 pnpm lint && pnpm typecheck && pnpm test && pnpm build
+DATABASE_URL=postgres://semaphore:semaphore@localhost:5432/semaphore pnpm test:integration
 ```
 
-CI runs lint → format → typecheck → unit → contract → (integration) → build, plus Compose
-validation and an image build. Contract fixtures in `contracts/` become a required merge gate
-once the evaluate API exists.
+CI runs lint → format → typecheck → unit → contract → integration (Postgres 16 service) →
+build, plus Compose validation and an image build.
 
 ## Planned sections
 
