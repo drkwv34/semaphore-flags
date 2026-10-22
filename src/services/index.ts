@@ -1,7 +1,9 @@
-/**
- * Use-case orchestration: owns transaction boundaries, audit inserts and cache invalidation.
- * No Fastify types here; no SQL here (that belongs in src/store).
- *
- * Scaffold only: no services yet.
- */
-export {};
+export { mintApiKey } from "./api-keys.js";
+export type { MintedApiKey } from "./api-keys.js";
+export {
+  createProjectWithKeys,
+  seedDemoProject,
+  getCurrentProject,
+  createProjectEnvironment,
+} from "./projects.js";
+export type { CreatedProject, SeedResult } from "./projects.js";

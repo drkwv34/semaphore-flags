@@ -22,6 +22,20 @@ export class ForbiddenError extends DomainError {
   }
 }
 
+export class NotImplementedError extends DomainError {
+  readonly code = "NOT_IMPLEMENTED";
+  constructor(message = "Not implemented") {
+    super(message);
+  }
+}
+
+export class UnavailableError extends DomainError {
+  readonly code = "UNAVAILABLE";
+  constructor(message = "Service unavailable") {
+    super(message);
+  }
+}
+
 export interface ErrorBody {
   error: {
     code: string;
@@ -51,6 +65,9 @@ export function mapError(err: unknown): Mapped {
   if (err instanceof ForbiddenError) return { status: 403, code: err.code, message: err.message };
   if (err instanceof NotFoundError) return { status: 404, code: err.code, message: err.message };
   if (err instanceof ConflictError) return { status: 409, code: err.code, message: err.message };
+  if (err instanceof NotImplementedError)
+    return { status: 501, code: err.code, message: err.message };
+  if (err instanceof UnavailableError) return { status: 503, code: err.code, message: err.message };
 
   if (isFastifyError(err) && err.validation) {
     return {

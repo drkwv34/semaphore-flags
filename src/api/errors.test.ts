@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import { ConflictError, NotFoundError, ValidationError } from "../domain/errors.js";
 import { buildApp } from "./app.js";
-import { ForbiddenError, UnauthorizedError, mapError } from "./errors.js";
+import {
+  ForbiddenError,
+  NotImplementedError,
+  UnauthorizedError,
+  UnavailableError,
+  mapError,
+} from "./errors.js";
 
 describe("mapError", () => {
   it.each([
@@ -11,6 +17,8 @@ describe("mapError", () => {
     [new ForbiddenError(), 403, "FORBIDDEN"],
     [new NotFoundError("flag", "beta_ui"), 404, "NOT_FOUND"],
     [new ConflictError("flag key taken"), 409, "CONFLICT"],
+    [new NotImplementedError(), 501, "NOT_IMPLEMENTED"],
+    [new UnavailableError(), 503, "UNAVAILABLE"],
     [new Error("db exploded: password=hunter2"), 500, "INTERNAL"],
   ])("maps %o to %i %s", (err, status, code) => {
     const mapped = mapError(err);
