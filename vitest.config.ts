@@ -16,6 +16,15 @@ export default defineConfig({
           include: ["test/contract/**/*.test.ts"],
         },
       },
+      {
+        test: {
+          name: "integration",
+          include: ["test/integration/**/*.test.ts"],
+          fileParallelism: true,
+          testTimeout: 30_000,
+          hookTimeout: 30_000,
+        },
+      },
     ],
   },
 });

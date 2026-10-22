@@ -9,6 +9,7 @@ FROM base AS build
 RUN pnpm install --frozen-lockfile
 COPY tsconfig.json tsconfig.build.json ./
 COPY src ./src
+COPY migrations ./migrations
 RUN pnpm build
 
 FROM base AS prod-deps
@@ -20,8 +21,9 @@ WORKDIR /app
 COPY --chown=node:node package.json ./
 COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/dist ./dist
+COPY --chown=node:node migrations ./migrations
 USER node
 EXPOSE 8080
-HEALTHCHECK --interval=10s --timeout=2s --start-period=5s --retries=3 \
-  CMD wget -qO- http://127.0.0.1:8080/healthz >/dev/null || exit 1
-CMD ["node", "dist/main.js"]
+HEALTHCHECK --interval=10s --timeout=2s --start-period=15s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:8080/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+CMD ["node", "dist/cli.js", "serve"]

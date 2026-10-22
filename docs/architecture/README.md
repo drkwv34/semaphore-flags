@@ -49,8 +49,8 @@ in repositories.
 
 **Evaluate (hot path)** — `POST /v1/evaluate`
 
-1. `api`: auth hook resolves the API key → `project_id`. Whether admin keys may also call
-   evaluate is decided in the projects-keys proposal.
+1. `api`: auth hook resolves the API key → `project_id`. Evaluate routes accept evaluate keys
+   only; a valid admin key is `403 FORBIDDEN`.
 2. `api`: Fastify JSON schema validates the body shape (400 on failure).
 3. `services`: `getSnapshot(project_id, env)` → Redis hit, or singleflight load from Postgres
    and compile, then best-effort write to Redis.
@@ -69,16 +69,18 @@ in repositories.
 
 ## Decision log
 
-| #   | Decision                                                             | Why                                                                            |
-| --- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| 1   | TypeScript + Fastify, not Go or Hono                                 | Portfolio keeps Go to one pin; Fastify's schema-driven serialization + OpenAPI |
-| 2   | `pg` with hand-written parameterized SQL, no ORM                     | SRS §8.2 allocation-light hot path; explicit transactions                      |
-| 3   | Compiled snapshot per `(project, env)` as the unit of cache and eval | One Redis GET per evaluate; predictable invalidation                           |
-| 4   | Redis optional; failures degrade to Postgres                         | FR-CACHE-004 availability over cache                                           |
-| 5   | Evaluate returns 200 + `not_found` for missing flags                 | FR-EVAL-001; clients must not break on a missing flag                          |
-| 6   | `readyz` depends on Postgres only; `healthz/deps` reports Redis      | FR-OPS-001                                                                     |
-| 7   | Contract fixtures are JSON data in `contracts/`, run via `inject`    | Fast CI gate; fixtures double as documentation                                 |
-| 8   | No DI container; constructor injection wired in the composition root | Small codebase; explicit dependencies are easier for agents to follow          |
+| #   | Decision                                                                | Why                                                                            |
+| --- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| 1   | TypeScript + Fastify, not Go or Hono                                    | Portfolio keeps Go to one pin; Fastify's schema-driven serialization + OpenAPI |
+| 2   | `pg` with hand-written parameterized SQL, no ORM                        | SRS §8.2 allocation-light hot path; explicit transactions                      |
+| 3   | Compiled snapshot per `(project, env)` as the unit of cache and eval    | One Redis GET per evaluate; predictable invalidation                           |
+| 4   | Redis optional; failures degrade to Postgres                            | FR-CACHE-004 availability over cache                                           |
+| 5   | Evaluate returns 200 + `not_found` for missing flags                    | FR-EVAL-001; clients must not break on a missing flag                          |
+| 6   | `readyz` depends on Postgres only; `healthz/deps` reports Redis         | FR-OPS-001                                                                     |
+| 7   | Contract fixtures are JSON data in `contracts/`, run via `inject`       | Fast CI gate; fixtures double as documentation                                 |
+| 8   | No DI container; constructor injection wired in the composition root    | Small codebase; explicit dependencies are easier for agents to follow          |
+| 9   | In-repo `semaphore migrate` runner (advisory lock, `schema_migrations`) | Avoids a second toolchain; matches forward-only SQL + lock rules               |
+| 10  | Admin keys cannot call evaluate routes (403)                            | NFR-SEC-001 key separation; operators mint an evaluate key at create/seed      |
 
 New decisions are recorded here (one row) and justified in the OpenSpec proposal that introduced
 them.
