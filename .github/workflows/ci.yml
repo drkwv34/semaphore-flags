@@ -16,7 +16,23 @@ jobs:
   verify:
     name: lint · typecheck · test · build
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: semaphore
+          POSTGRES_PASSWORD: semaphore
+          POSTGRES_DB: semaphore
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U semaphore -d semaphore"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://semaphore:semaphore@localhost:5432/semaphore
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -36,9 +52,12 @@ jobs:
       - name: Contract tests
         run: pnpm test:contract
       - name: Integration tests
-        run: echo "No integration tests yet; added with the first migration."
+        run: pnpm test:integration
       - name: Build
         run: pnpm build
+      - name: Dump Postgres logs
+        if: failure()
+        run: docker logs "$(docker ps -q --filter ancestor=postgres:16-alpine | head -n1)" || true
 
   image:
     name: compose config · image build
@@ -59,3 +78,8 @@ jobs:
           tags: semaphore-flags:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      - name: Dump compose / docker on failure
+        if: failure()
+        run: |
+          docker compose logs || true
+          docker ps -a || true
