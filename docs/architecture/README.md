@@ -81,6 +81,9 @@ in repositories.
 | 8   | No DI container; constructor injection wired in the composition root    | Small codebase; explicit dependencies are easier for agents to follow          |
 | 9   | In-repo `semaphore migrate` runner (advisory lock, `schema_migrations`) | Avoids a second toolchain; matches forward-only SQL + lock rules               |
 | 10  | Admin keys cannot call evaluate routes (403)                            | NFR-SEC-001 key separation; operators mint an evaluate key at create/seed      |
+| 11  | Soft-archive flags via `POST /v1/flags/:key/archive`                    | Archive is not a hard delete; DELETE would imply dropping the unique key       |
+| 12  | `audit_events` immutability is a trigger, not a second DB role          | Compose/CI use the table owner; REVOKE does not bind the owner                 |
+| 13  | PUT env-config diffs rules into `rule.create`/`update`/`delete`         | One `env_config.update` plus per-rule events keeps the audit trail precise     |
 
 New decisions are recorded here (one row) and justified in the OpenSpec proposal that introduced
 them.
