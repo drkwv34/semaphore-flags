@@ -1,0 +1,17 @@
+{
+  "name": "evaluate key is forbidden on flag routes",
+  "request": {
+    "method": "GET",
+    "url": "/v1/flags/checkout_v2"
+  },
+  "response": {
+    "status": 403,
+    "body": {
+      "error": {
+        "code": "FORBIDDEN",
+        "message": "API key type not allowed for this route",
+        "request_id": "r-1"
+      }
+    }
+  }
+}
