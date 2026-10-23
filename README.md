@@ -96,12 +96,12 @@ writes an append-only `audit_events` row in the same transaction (`flag.create` 
 the PUT rule set diffs). There is no `GET /v1/audit` yet.
 
 ```sh
-curl -sS -o /tmp/flag.json -w '%{http_code}\n' \
+curl -sS -o /tmp/flag.json -w '%{http_code}\n' -X POST \
   -H "Authorization: Bearer $ADMIN_KEY" -H "Content-Type: application/json" \
   -d '{"key":"smoke_flag","default_value":false}' http://localhost:8080/v1/flags
 # 201
 
-curl -sS -o /tmp/env.json -w '%{http_code}\n' \
+curl -sS -o /tmp/env.json -w '%{http_code}\n' -X PUT \
   -H "Authorization: Bearer $ADMIN_KEY" -H "Content-Type: application/json" \
   -d '{"enabled":true,"percentage":50,"rules":[{"priority":0,"attribute":"user.plan","op":"eq","value":"pro","serve":true}]}' \
   http://localhost:8080/v1/flags/smoke_flag/envs/dev
