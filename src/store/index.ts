@@ -10,7 +10,32 @@ export {
   revokeApiKey,
 } from "./api-keys.js";
 export type { ApiKeyRecord } from "./api-keys.js";
-export { insertEnvironment, ensureEnvironment, listEnvironments } from "./environments.js";
+export {
+  insertEnvironment,
+  ensureEnvironment,
+  listEnvironments,
+  findEnvironmentByKey,
+} from "./environments.js";
 export type { Environment } from "./environments.js";
+export {
+  insertFlag,
+  lockFlagByKey,
+  findFlagByKey,
+  listFlags,
+  updateFlag,
+  archiveFlag,
+} from "./flags.js";
+export type { Flag } from "./flags.js";
+export {
+  insertFlagEnvConfig,
+  upsertFlagEnvConfig,
+  listFlagEnvConfigs,
+  findFlagEnvConfig,
+} from "./flag-env-configs.js";
+export type { FlagEnvConfig } from "./flag-env-configs.js";
+export { listRules, deleteRulesForEnv, insertRule } from "./rules.js";
+export type { StoredRule } from "./rules.js";
+export { insertAuditEvent, listAuditEvents } from "./audit.js";
+export type { AuditEvent } from "./audit.js";
 export { pingPostgres } from "./health.js";
 export { translatePgError } from "./pg-error.js";

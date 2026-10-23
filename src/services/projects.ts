@@ -23,6 +23,7 @@ import {
   type Project,
 } from "../store/index.js";
 import { mintApiKey, type MintedApiKey } from "./api-keys.js";
+import { seedDemoFlags } from "./flags.js";
 
 export interface CreatedProject {
   readonly project: Project;
@@ -73,6 +74,17 @@ export interface SeedResult {
   readonly evaluateKey?: MintedApiKey;
 }
 
+async function seedFlagsWithAdmin(pool: Pool, projectId: string): Promise<void> {
+  const keys = await listApiKeysByProject(pool, projectId);
+  const admin = keys.find((k) => k.type === "admin" && k.revokedAt === null);
+  if (admin === undefined) return;
+  await seedDemoFlags(pool, {
+    projectId,
+    actorKeyId: admin.id,
+    requestId: "seed",
+  });
+}
+
 export async function seedDemoProject(pool: Pool): Promise<SeedResult> {
   const existing = await findProjectBySlug(pool, DEMO_PROJECT_SLUG);
   if (existing) {
@@ -85,6 +97,7 @@ export async function seedDemoProject(pool: Pool): Promise<SeedResult> {
     const hasAdmin = keys.some((k) => k.type === "admin" && k.revokedAt === null);
     const hasEvaluate = keys.some((k) => k.type === "evaluate" && k.revokedAt === null);
     if (hasAdmin && hasEvaluate) {
+      await seedFlagsWithAdmin(pool, existing.id);
       return { project: existing, created: false };
     }
 
@@ -110,6 +123,7 @@ export async function seedDemoProject(pool: Pool): Promise<SeedResult> {
         });
       }
     });
+    await seedFlagsWithAdmin(pool, existing.id);
     return {
       project: existing,
       created: false,
@@ -122,6 +136,7 @@ export async function seedDemoProject(pool: Pool): Promise<SeedResult> {
     name: DEMO_PROJECT_NAME,
     slug: DEMO_PROJECT_SLUG,
   });
+  await seedFlagsWithAdmin(pool, created.project.id);
   return {
     project: created.project,
     created: true,

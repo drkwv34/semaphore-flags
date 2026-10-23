@@ -7,6 +7,7 @@ import { createProjectEnvironment, getCurrentProject } from "../services/project
 import { pingPostgres, type Pool } from "../store/index.js";
 import { requireKey } from "./auth.js";
 import { errorHandler, NotImplementedError, UnavailableError } from "./errors.js";
+import { registerFlagRoutes } from "./flags.js";
 import { errorResponses } from "./schemas.js";
 
 export const REQUEST_ID_HEADER = "x-request-id";
@@ -137,6 +138,8 @@ export function buildApp(
         };
       },
     );
+
+    registerFlagRoutes(app, pool);
 
     app.post(
       "/v1/evaluate",
