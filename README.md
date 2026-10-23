@@ -6,9 +6,9 @@
 Feature flags and kill switches with targeting rules, percentage rollouts, audit logs, and a fast
 HTTP evaluate API.
 
-> **Status: architecture first.** Projects, API keys, environments, and health/ready are live.
-> Flag CRUD and the evaluate algorithm land as later OpenSpec changes. `POST /v1/evaluate`
-> authenticates, then returns `501 NOT_IMPLEMENTED`.
+> **Status: architecture first.** Projects, API keys, environments, flag/rule admin, and
+> append-only audit writes are live. The evaluate algorithm lands as a later OpenSpec change.
+> `POST /v1/evaluate` authenticates, then returns `501 NOT_IMPLEMENTED`.
 
 ## Problem
 
@@ -80,12 +80,40 @@ docker compose logs api
 # evaluate key (shown once): sf_eval_…
 ```
 
-Copy the admin key and call the admin route:
+Copy the admin and evaluate keys and call the admin route:
 
 ```sh
-ADMIN_KEY='sf_admin_…'   # paste from the seed log, first boot only
+ADMIN_KEY='sf_admin_…'       # paste from the seed log, first boot only
+EVALUATE_KEY='sf_eval_…'
 curl -sS -H "Authorization: Bearer $ADMIN_KEY" http://localhost:8080/v1/projects/current
 # 200 {"id":"…","name":"Demo","slug":"demo","created_at":"…"}
+```
+
+Flags, rules, and audit (admin key only). Seed already created `checkout_v2` (50% + a rule in
+`dev`) and `kill_switch`. Archive is `POST /v1/flags/:key/archive`, not DELETE. Every mutation
+writes an append-only `audit_events` row in the same transaction (`flag.create` /
+`flag.update` / `flag.archive` / `env_config.update` plus `rule.create`/`update`/`delete` when
+the PUT rule set diffs). There is no `GET /v1/audit` yet.
+
+```sh
+curl -sS -o /tmp/flag.json -w '%{http_code}\n' -X POST \
+  -H "Authorization: Bearer $ADMIN_KEY" -H "Content-Type: application/json" \
+  -d '{"key":"smoke_flag","default_value":false}' http://localhost:8080/v1/flags
+# 201
+
+curl -sS -o /tmp/env.json -w '%{http_code}\n' -X PUT \
+  -H "Authorization: Bearer $ADMIN_KEY" -H "Content-Type: application/json" \
+  -d '{"enabled":true,"percentage":50,"rules":[{"priority":0,"attribute":"user.plan","op":"eq","value":"pro","serve":true}]}' \
+  http://localhost:8080/v1/flags/smoke_flag/envs/dev
+# 200
+
+curl -sS -o /tmp/get.json -w '%{http_code}\n' \
+  -H "Authorization: Bearer $ADMIN_KEY" http://localhost:8080/v1/flags/smoke_flag
+# 200
+
+curl -sS -o /dev/null -w '%{http_code}\n' \
+  -H "Authorization: Bearer $EVALUATE_KEY" http://localhost:8080/v1/flags/smoke_flag
+# 403
 ```
 
 Auth checks on that same route:

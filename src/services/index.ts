@@ -7,3 +7,12 @@ export {
   createProjectEnvironment,
 } from "./projects.js";
 export type { CreatedProject, SeedResult } from "./projects.js";
+export {
+  createFlag,
+  listFlags,
+  getFlag,
+  patchFlag,
+  archiveFlag,
+  putEnvConfig,
+  seedDemoFlags,
+} from "./flags.js";

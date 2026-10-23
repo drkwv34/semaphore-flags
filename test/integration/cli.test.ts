@@ -25,6 +25,7 @@ describe("semaphore CLI (FR-PROJ-001)", () => {
     await withTestDatabase(async (databaseUrl) => {
       const first = await semaphore(databaseUrl, ["migrate"]);
       expect(first.stdout).toContain("0001_projects_keys_envs.sql");
+      expect(first.stdout).toContain("0002_flags_rules_audit.sql");
       const second = await semaphore(databaseUrl, ["migrate"]);
       expect(second.stdout).toContain("already up to date");
 
@@ -74,6 +75,20 @@ describe("semaphore CLI (FR-PROJ-001)", () => {
       expect(keys.rows).toHaveLength(2);
       const envs = await pool.query("SELECT key FROM environments ORDER BY key");
       expect(envs.rows.map((row: { key: string }) => row.key)).toEqual(["dev", "prod", "staging"]);
+      const flags = await pool.query<{ key: string }>("SELECT key FROM flags ORDER BY key");
+      expect(flags.rows.map((row) => row.key)).toEqual(["checkout_v2", "kill_switch"]);
+      const checkoutDev = await pool.query<{ enabled: boolean; percentage: number }>(
+        `SELECT c.enabled, c.percentage
+         FROM flag_env_configs c
+         JOIN flags f ON f.id = c.flag_id
+         JOIN environments e ON e.id = c.environment_id
+         WHERE f.key = 'checkout_v2' AND e.key = 'dev'`,
+      );
+      expect(checkoutDev.rows[0]).toMatchObject({ enabled: true, percentage: 50 });
+      const rules = await pool.query("SELECT id FROM rules");
+      expect(rules.rows).toHaveLength(1);
+      const flagsAgain = await pool.query("SELECT id FROM flags");
+      expect(flagsAgain.rows).toHaveLength(2);
       await pool.end();
     });
   });

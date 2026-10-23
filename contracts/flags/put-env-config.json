@@ -1,0 +1,39 @@
+{
+  "name": "replace env config with ordered rules",
+  "request": {
+    "method": "PUT",
+    "url": "/v1/flags/checkout_v2/envs/dev",
+    "body": {
+      "enabled": true,
+      "percentage": 50,
+      "rules": [
+        {
+          "priority": 0,
+          "attribute": "user.plan",
+          "op": "eq",
+          "value": "pro",
+          "serve": true
+        }
+      ]
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "key": "dev",
+      "enabled": true,
+      "percentage": 50,
+      "updated_at": "2026-10-22T00:00:00.000Z",
+      "rules": [
+        {
+          "id": "00000000-0000-0000-0000-000000000010",
+          "priority": 0,
+          "attribute": "user.plan",
+          "op": "eq",
+          "value": "pro",
+          "serve": true
+        }
+      ]
+    }
+  }
+}

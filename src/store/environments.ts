@@ -65,3 +65,16 @@ export async function listEnvironments(
   );
   return res.rows.map(toEnvironment);
 }
+
+export async function findEnvironmentByKey(
+  db: Queryable,
+  projectId: string,
+  key: string,
+): Promise<Environment | undefined> {
+  const res = await db.query<EnvironmentRow>(
+    `SELECT id, project_id, key, created_at FROM environments WHERE project_id = $1 AND key = $2`,
+    [projectId, key],
+  );
+  const row = res.rows[0];
+  return row ? toEnvironment(row) : undefined;
+}

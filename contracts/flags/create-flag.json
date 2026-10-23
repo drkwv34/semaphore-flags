@@ -1,0 +1,36 @@
+{
+  "name": "create flag",
+  "request": {
+    "method": "POST",
+    "url": "/v1/flags",
+    "body": {
+      "key": "checkout_v2",
+      "description": "Checkout v2",
+      "default_value": false,
+      "client_fallback": "fail_closed"
+    }
+  },
+  "response": {
+    "status": 201,
+    "body": {
+      "id": "00000000-0000-0000-0000-000000000001",
+      "key": "checkout_v2",
+      "description": "Checkout v2",
+      "flag_type": "boolean",
+      "default_value": false,
+      "client_fallback": "fail_closed",
+      "archived_at": null,
+      "created_at": "2026-10-22T00:00:00.000Z",
+      "updated_at": "2026-10-22T00:00:00.000Z",
+      "envs": [
+        {
+          "key": "dev",
+          "enabled": false,
+          "percentage": 0,
+          "updated_at": "2026-10-22T00:00:00.000Z",
+          "rules": []
+        }
+      ]
+    }
+  }
+}

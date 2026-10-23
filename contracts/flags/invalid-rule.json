@@ -1,0 +1,34 @@
+{
+  "name": "invalid rule returns field errors",
+  "request": {
+    "method": "PUT",
+    "url": "/v1/flags/checkout_v2/envs/dev",
+    "body": {
+      "enabled": true,
+      "percentage": 50,
+      "rules": [
+        {
+          "priority": 0,
+          "attribute": "",
+          "op": "gt",
+          "value": "5",
+          "serve": true
+        }
+      ]
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": {
+      "error": {
+        "code": "VALIDATION_FAILED",
+        "message": "Request validation failed",
+        "request_id": "r-1",
+        "fields": [
+          { "path": "/rules/0/attribute", "message": "must be a non-empty string" },
+          { "path": "/rules/0/value", "message": "must be a number" }
+        ]
+      }
+    }
+  }
+}
