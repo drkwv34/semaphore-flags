@@ -2,7 +2,7 @@ import type { FastifyRequest } from "fastify";
 
 import { DUMMY_KEY_HASH, hashApiKey, hashesMatch, parseApiKey } from "../domain/api-key.js";
 import type { ApiKeyType } from "../domain/api-key.js";
-import { findApiKeyByPrefix, type Pool } from "../store/index.js";
+import type { ApiKeyRecord } from "../store/index.js";
 import { UnauthorizedError, ForbiddenError } from "./errors.js";
 
 export interface AuthContext {
@@ -17,6 +17,8 @@ declare module "fastify" {
   }
 }
 
+export type ApiKeyFinder = (prefix: string) => Promise<ApiKeyRecord | undefined>;
+
 const BEARER = /^Bearer\s+(\S+)$/i;
 
 function presentedToken(request: FastifyRequest): string | undefined {
@@ -26,7 +28,7 @@ function presentedToken(request: FastifyRequest): string | undefined {
   return match?.[1];
 }
 
-export function requireKey(pool: Pool, required: ApiKeyType) {
+export function requireKey(find: ApiKeyFinder, required: ApiKeyType) {
   return async (request: FastifyRequest): Promise<void> => {
     const raw = presentedToken(request);
     if (raw === undefined) {
@@ -40,7 +42,7 @@ export function requireKey(pool: Pool, required: ApiKeyType) {
       throw new UnauthorizedError();
     }
 
-    const row = await findApiKeyByPrefix(pool, parsed.prefix);
+    const row = await find(parsed.prefix);
     const storedHash = row?.keyHash ?? DUMMY_KEY_HASH;
     if (!hashesMatch(storedHash, presentedHash) || row === undefined || row.revokedAt !== null) {
       throw new UnauthorizedError();

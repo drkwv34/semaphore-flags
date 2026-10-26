@@ -4,7 +4,7 @@ import { ValidationError, type FieldError } from "../errors.js";
  * Pure targeting-rule predicates (SRS FR-RULE-*). A missing attribute never throws; it simply
  * does not match.
  *
- * Write-path validation lives here (FR-RULE-001/004). Predicate evaluation lands with evaluate.
+ * Write-path validation (FR-RULE-001/004) and runtime match (FR-RULE-003) both live here.
  */
 
 export const RULE_OPS = [
@@ -54,6 +54,61 @@ export function isJsonPrimitive(value: unknown): value is JsonPrimitive {
     (typeof value === "number" && Number.isFinite(value)) ||
     typeof value === "boolean"
   );
+}
+
+export interface RulePredicate {
+  readonly attribute: string;
+  readonly op: RuleOp;
+  readonly value: JsonPrimitive | readonly JsonPrimitive[];
+}
+
+export interface PredicateUser {
+  readonly id: string;
+  readonly attrs?: Readonly<Record<string, JsonPrimitive>>;
+}
+
+function resolveAttribute(attribute: string, user: PredicateUser): JsonPrimitive | undefined {
+  if (attribute === "user.id") return user.id;
+  const name = attribute.startsWith("user.") ? attribute.slice("user.".length) : attribute;
+  if (name.length === 0) return undefined;
+  const attrs = user.attrs;
+  if (attrs === undefined || !Object.hasOwn(attrs, name)) return undefined;
+  return attrs[name];
+}
+
+function samePrimitive(left: JsonPrimitive, right: JsonPrimitive): boolean {
+  return Object.is(left, right);
+}
+
+/** Runtime predicate (FR-RULE-003). Missing attributes and incomparable types are false. */
+export function matchRule(rule: RulePredicate, user: PredicateUser): boolean {
+  const left = resolveAttribute(rule.attribute, user);
+  switch (rule.op) {
+    case "eq":
+      return left !== undefined && isJsonPrimitive(rule.value) && samePrimitive(left, rule.value);
+    case "neq":
+      return left !== undefined && isJsonPrimitive(rule.value) && !samePrimitive(left, rule.value);
+    case "in": {
+      if (left === undefined || !Array.isArray(rule.value)) return false;
+      return rule.value.some((item) => isJsonPrimitive(item) && samePrimitive(left, item));
+    }
+    case "not_in": {
+      if (left === undefined || !Array.isArray(rule.value)) return false;
+      return !rule.value.some((item) => isJsonPrimitive(item) && samePrimitive(left, item));
+    }
+    case "contains":
+      return (
+        typeof left === "string" && typeof rule.value === "string" && left.includes(rule.value)
+      );
+    case "gt":
+      return typeof left === "number" && typeof rule.value === "number" && left > rule.value;
+    case "gte":
+      return typeof left === "number" && typeof rule.value === "number" && left >= rule.value;
+    case "lt":
+      return typeof left === "number" && typeof rule.value === "number" && left < rule.value;
+    case "lte":
+      return typeof left === "number" && typeof rule.value === "number" && left <= rule.value;
+  }
 }
 
 function valueError(op: RuleOp, value: unknown): string | undefined {

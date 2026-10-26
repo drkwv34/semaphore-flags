@@ -1,0 +1,62 @@
+[
+  {
+    "salt": "fixture-salt",
+    "flag_key": "checkout_v2",
+    "user_id": "user-alpha",
+    "bucket": 42
+  },
+  {
+    "salt": "fixture-salt",
+    "flag_key": "checkout_v2",
+    "user_id": "user-beta",
+    "bucket": 82
+  },
+  {
+    "salt": "fixture-salt",
+    "flag_key": "kill_switch",
+    "user_id": "user-alpha",
+    "bucket": 8
+  },
+  {
+    "salt": "proj-salt-1",
+    "flag_key": "checkout_v2",
+    "user_id": "user-alpha",
+    "bucket": 67
+  },
+  {
+    "salt": "fixture-salt",
+    "flag_key": "checkout_v2",
+    "user_id": "u",
+    "bucket": 8
+  },
+  {
+    "salt": "a",
+    "flag_key": "ab",
+    "user_id": "1",
+    "bucket": 2
+  },
+  {
+    "salt": "fixture-salt",
+    "flag_key": "beta_ui",
+    "user_id": "user:colon",
+    "bucket": 83
+  },
+  {
+    "salt": "fixture-salt",
+    "flag_key": "checkout_v2",
+    "user_id": "unicode-ü",
+    "bucket": 53
+  },
+  {
+    "salt": "fixture-salt",
+    "flag_key": "checkout_v2",
+    "user_id": "user-76",
+    "bucket": 0
+  },
+  {
+    "salt": "fixture-salt",
+    "flag_key": "checkout_v2",
+    "user_id": "user-39",
+    "bucket": 99
+  }
+]

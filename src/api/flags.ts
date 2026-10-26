@@ -11,7 +11,7 @@ import {
   type PatchFlagInput,
   type PutEnvConfigInput,
 } from "../services/flags.js";
-import type { Pool } from "../store/index.js";
+import { findApiKeyByPrefix, type Pool } from "../store/index.js";
 import { requireKey } from "./auth.js";
 import { UnavailableError } from "./errors.js";
 import {
@@ -56,7 +56,7 @@ function queryInt(value: number | string | undefined, fallback: number): number 
 }
 
 export function registerFlagRoutes(app: FastifyInstance, pool: Pool): void {
-  const admin = requireKey(pool, "admin");
+  const admin = requireKey((prefix) => findApiKeyByPrefix(pool, prefix), "admin");
 
   app.post<{ Body: CreateFlagInput }>(
     "/v1/flags",
