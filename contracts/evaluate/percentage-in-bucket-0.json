@@ -1,0 +1,32 @@
+{
+  "name": "bucket 0 is in at percentage 1",
+  "auth": "evaluate",
+  "setup": {
+    "salt": "fixture-salt",
+    "env": "prod",
+    "flags": [
+      {
+        "key": "checkout_v2",
+        "archived": false,
+        "default_value": false,
+        "enabled": true,
+        "percentage": 1,
+        "rules": []
+      }
+    ]
+  },
+  "request": {
+    "method": "POST",
+    "url": "/v1/evaluate",
+    "body": { "flag_key": "checkout_v2", "env": "prod", "user": { "id": "user-76" } }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "flag_key": "checkout_v2",
+      "value": true,
+      "reason": "percentage_in",
+      "variant": "on"
+    }
+  }
+}

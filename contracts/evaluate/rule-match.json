@@ -1,0 +1,39 @@
+{
+  "name": "first matching rule wins",
+  "auth": "evaluate",
+  "setup": {
+    "salt": "fixture-salt",
+    "env": "dev",
+    "flags": [
+      {
+        "key": "checkout_v2",
+        "archived": false,
+        "default_value": false,
+        "enabled": true,
+        "percentage": 0,
+        "rules": [
+          { "attribute": "user.plan", "op": "eq", "value": "pro", "serve": true },
+          { "attribute": "user.country", "op": "eq", "value": "US", "serve": false }
+        ]
+      }
+    ]
+  },
+  "request": {
+    "method": "POST",
+    "url": "/v1/evaluate",
+    "body": {
+      "flag_key": "checkout_v2",
+      "env": "dev",
+      "user": { "id": "user-76", "attrs": { "plan": "pro", "country": "US" } }
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "flag_key": "checkout_v2",
+      "value": true,
+      "reason": "rule_match",
+      "variant": "on"
+    }
+  }
+}
