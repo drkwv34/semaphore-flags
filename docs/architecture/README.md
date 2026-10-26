@@ -84,6 +84,7 @@ in repositories.
 | 11  | Soft-archive flags via `POST /v1/flags/:key/archive`                    | Archive is not a hard delete; DELETE would imply dropping the unique key       |
 | 12  | `audit_events` immutability is a trigger, not a second DB role          | Compose/CI use the table owner; REVOKE does not bind the owner                 |
 | 13  | PUT env-config diffs rules into `rule.create`/`update`/`delete`         | One `env_config.update` plus per-rule events keeps the audit trail precise     |
+| 14  | Archived evaluate is `false` + `archived`, not `default_value`          | FR-EVAL-002; clients must not confuse archive with a kill switch               |
 
 New decisions are recorded here (one row) and justified in the OpenSpec proposal that introduced
 them.
