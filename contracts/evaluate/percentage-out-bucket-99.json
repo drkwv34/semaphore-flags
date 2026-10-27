@@ -1,0 +1,32 @@
+{
+  "name": "bucket 99 is out at percentage 99",
+  "auth": "evaluate",
+  "setup": {
+    "salt": "fixture-salt",
+    "env": "prod",
+    "flags": [
+      {
+        "key": "checkout_v2",
+        "archived": false,
+        "default_value": false,
+        "enabled": true,
+        "percentage": 99,
+        "rules": []
+      }
+    ]
+  },
+  "request": {
+    "method": "POST",
+    "url": "/v1/evaluate",
+    "body": { "flag_key": "checkout_v2", "env": "prod", "user": { "id": "user-39" } }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "flag_key": "checkout_v2",
+      "value": false,
+      "reason": "percentage_out",
+      "variant": "off"
+    }
+  }
+}

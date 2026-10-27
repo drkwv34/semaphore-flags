@@ -1,0 +1,32 @@
+{
+  "name": "percentage 0 is everyone out after rules",
+  "auth": "evaluate",
+  "setup": {
+    "salt": "fixture-salt",
+    "env": "prod",
+    "flags": [
+      {
+        "key": "checkout_v2",
+        "archived": false,
+        "default_value": false,
+        "enabled": true,
+        "percentage": 0,
+        "rules": []
+      }
+    ]
+  },
+  "request": {
+    "method": "POST",
+    "url": "/v1/evaluate",
+    "body": { "flag_key": "checkout_v2", "env": "prod", "user": { "id": "user-76" } }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "flag_key": "checkout_v2",
+      "value": false,
+      "reason": "percentage_out",
+      "variant": "off"
+    }
+  }
+}

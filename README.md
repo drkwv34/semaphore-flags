@@ -6,9 +6,9 @@
 Feature flags and kill switches with targeting rules, percentage rollouts, audit logs, and a fast
 HTTP evaluate API.
 
-> **Status: architecture first.** Projects, API keys, environments, flag/rule admin, and
-> append-only audit writes are live. The evaluate algorithm lands as a later OpenSpec change.
-> `POST /v1/evaluate` authenticates, then returns `501 NOT_IMPLEMENTED`.
+> **Status: evaluate is live.** Projects, API keys, environments, flag/rule admin, append-only
+> audit writes, and `POST /v1/evaluate` (SHA-256 bucketing, kill switch, targeting rules) are
+> implemented. Batch evaluate, audit read, and Redis cache land as later OpenSpec changes.
 
 ## Problem
 
@@ -116,6 +116,32 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 # 403
 ```
 
+Evaluate (evaluate key only; admin key is `403`). Seed already created `kill_switch` (disabled
+in every env, `default_value` false) and `checkout_v2` (enabled 50% in `dev` with
+`user.plan eq "pro"`). Missing flags are `200` with `reason: "not_found"`, never 404.
+
+Hash bucket: `first_4_bytes_be(SHA256(project_salt + ":" + flag_key + ":" + user.id)) % 100`
+(0..99). Rollout is `bucket < percentage`. Reasons:
+`disabled | rule_match | percentage_in | percentage_out | default | archived | not_found`
+(`default` is reserved and unused). `variant` is `"on"` when `value` is true, else `"off"`.
+
+```sh
+curl -sS -w '\n%{http_code}\n' -X POST \
+  -H "Authorization: Bearer $EVALUATE_KEY" -H "Content-Type: application/json" \
+  -d '{"flag_key":"kill_switch","env":"prod","user":{"id":"u1"}}' \
+  http://localhost:8080/v1/evaluate
+# 200 {"flag_key":"kill_switch","value":false,"reason":"disabled","variant":"off"}
+
+curl -sS -w '\n%{http_code}\n' -X POST \
+  -H "Authorization: Bearer $EVALUATE_KEY" -H "Content-Type: application/json" \
+  -d '{"flag_key":"checkout_v2","env":"dev","user":{"id":"u1","attrs":{"plan":"pro"}}}' \
+  http://localhost:8080/v1/evaluate
+# 200 {"flag_key":"checkout_v2","value":true,"reason":"rule_match","variant":"on"}
+```
+
+In-process microbench (soft, not a CI gate): `pnpm build && node scripts/bench-evaluate.mjs`.
+Budget is p99 < 10ms for ≤ 20 rules (NFR-PERF-001).
+
 Auth checks on that same route:
 
 ```sh
@@ -163,9 +189,8 @@ build, plus Compose validation and an image build.
 
 ## Planned sections
 
-Demo walkthrough, evaluation algorithm, client integration and fallback guidance
-(fail-open vs fail-closed), and trade-offs (cache TTL, not_found semantics) are written as the
-corresponding features land.
+Demo-client evaluate loop, client integration and fallback guidance (fail-open vs fail-closed),
+and cache TTL trade-offs are written as the corresponding features land.
 
 ## License
 

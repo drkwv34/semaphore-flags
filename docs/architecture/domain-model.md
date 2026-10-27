@@ -85,9 +85,8 @@ SRS FR-EVAL-002 exactly. It is the most important function in the repo:
 - Hash bucketing: `first_4_bytes_be(SHA256(salt + ":" + flag_key + ":" + user.id)) % 100`,
   rollout test `bucket < percentage`. Golden vectors are committed and must never change.
 
-Open question for the evaluate-core proposal: FR-FLAG-004 says an archived flag serves
-"default / false" while FR-EVAL-002 says `false`. The proposal must pick one and update the SRS
-reference in the spec.
+Archived flags serve `{ value: false, reason: "archived" }` (FR-EVAL-002), not `default_value`.
+The `default` reason stays in `EVALUATION_REASONS` but is unused by this algorithm.
 
 ## Where logic goes
 

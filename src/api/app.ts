@@ -3,10 +3,17 @@ import { randomUUID } from "node:crypto";
 import Fastify, { type FastifyInstance, LogController } from "fastify";
 
 import type { Config } from "../config.js";
+import type { SnapshotSource } from "../domain/evaluate/index.js";
 import { createProjectEnvironment, getCurrentProject } from "../services/projects.js";
-import { pingPostgres, type Pool } from "../store/index.js";
-import { requireKey } from "./auth.js";
-import { errorHandler, NotImplementedError, UnavailableError } from "./errors.js";
+import {
+  findApiKeyByPrefix,
+  pingPostgres,
+  postgresSnapshotSource,
+  type Pool,
+} from "../store/index.js";
+import { requireKey, type ApiKeyFinder } from "./auth.js";
+import { errorHandler, UnavailableError } from "./errors.js";
+import { registerEvaluateRoutes } from "./evaluate.js";
 import { registerFlagRoutes } from "./flags.js";
 import { errorResponses } from "./schemas.js";
 
@@ -15,6 +22,8 @@ export const REQUEST_ID_HEADER = "x-request-id";
 export interface AppDeps {
   readonly pool?: Pool;
   readonly redisConfigured?: boolean;
+  readonly snapshotSource?: SnapshotSource;
+  readonly findApiKey?: ApiKeyFinder;
 }
 
 /** Composition root for the HTTP edge. Routes are registered here; they never touch SQL directly. */
@@ -62,12 +71,17 @@ export function buildApp(
   });
 
   const pool = deps.pool;
+  const findApiKey: ApiKeyFinder | undefined =
+    deps.findApiKey ??
+    (pool === undefined ? undefined : (prefix) => findApiKeyByPrefix(pool, prefix));
+  const snapshotSource: SnapshotSource | undefined =
+    deps.snapshotSource ?? (pool === undefined ? undefined : postgresSnapshotSource(pool));
 
-  if (pool) {
+  if (pool && findApiKey) {
     app.get(
       "/v1/projects/current",
       {
-        preHandler: requireKey(pool, "admin"),
+        preHandler: requireKey(findApiKey, "admin"),
         schema: {
           response: {
             200: {
@@ -101,7 +115,7 @@ export function buildApp(
     app.post<{ Body: { key: string } }>(
       "/v1/environments",
       {
-        preHandler: requireKey(pool, "admin"),
+        preHandler: requireKey(findApiKey, "admin"),
         schema: {
           body: {
             type: "object",
@@ -140,21 +154,10 @@ export function buildApp(
     );
 
     registerFlagRoutes(app, pool);
+  }
 
-    app.post(
-      "/v1/evaluate",
-      {
-        preHandler: requireKey(pool, "evaluate"),
-        schema: {
-          response: {
-            ...errorResponses,
-          },
-        },
-      },
-      () => {
-        throw new NotImplementedError("evaluate is not implemented");
-      },
-    );
+  if (findApiKey !== undefined && snapshotSource !== undefined) {
+    registerEvaluateRoutes(app, { findApiKey, snapshotSource });
   }
 
   return app;

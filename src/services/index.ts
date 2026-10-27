@@ -16,3 +16,5 @@ export {
   putEnvConfig,
   seedDemoFlags,
 } from "./flags.js";
+export { evaluateFlag } from "./evaluate.js";
+export type { EvaluateRequest, EvaluateResponse } from "./evaluate.js";

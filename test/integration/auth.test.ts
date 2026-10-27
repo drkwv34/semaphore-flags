@@ -79,10 +79,11 @@ describe("auth 401/403 matrix (FR-PROJ-002, NFR-SEC-001)", () => {
       const evalOk = await app.inject({
         method: "POST",
         url: "/v1/evaluate",
-        headers: bearer(created.evaluateKey.raw),
+        headers: { ...bearer(created.evaluateKey.raw), "content-type": "application/json" },
+        payload: { flag_key: "missing_flag", env: "dev", user: { id: "u1" } },
       });
-      expect(evalOk.statusCode).toBe(501);
-      expect(evalOk.json()).toMatchObject({ error: { code: "NOT_IMPLEMENTED" } });
+      expect(evalOk.statusCode).toBe(200);
+      expect(evalOk.json()).toMatchObject({ reason: "not_found", value: false });
 
       const evalMissing = await app.inject({ method: "POST", url: "/v1/evaluate" });
       expect(evalMissing.statusCode).toBe(401);

@@ -1,0 +1,32 @@
+{
+  "name": "missing attribute does not match",
+  "auth": "evaluate",
+  "setup": {
+    "salt": "fixture-salt",
+    "env": "dev",
+    "flags": [
+      {
+        "key": "checkout_v2",
+        "archived": false,
+        "default_value": false,
+        "enabled": true,
+        "percentage": 0,
+        "rules": [{ "attribute": "user.plan", "op": "eq", "value": "pro", "serve": true }]
+      }
+    ]
+  },
+  "request": {
+    "method": "POST",
+    "url": "/v1/evaluate",
+    "body": { "flag_key": "checkout_v2", "env": "dev", "user": { "id": "user-76" } }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "flag_key": "checkout_v2",
+      "value": false,
+      "reason": "percentage_out",
+      "variant": "off"
+    }
+  }
+}

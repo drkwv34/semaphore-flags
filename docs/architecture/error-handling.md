@@ -21,14 +21,14 @@
 | `ForbiddenError`      | `FORBIDDEN`         | 403  | Valid key of the wrong type (evaluate key on admin route) |
 | `NotFoundError`       | `NOT_FOUND`         | 404  | Admin route addressing a missing entity                   |
 | `ConflictError`       | `CONFLICT`          | 409  | Unique violation (flag key, env key, rule priority)       |
-| `NotImplementedError` | `NOT_IMPLEMENTED`   | 501  | Authenticated placeholder (evaluate until that change)    |
+| `NotImplementedError` | `NOT_IMPLEMENTED`   | 501  | Authenticated placeholder for not-yet-built routes        |
 | `UnavailableError`    | `UNAVAILABLE`       | 503  | Postgres unreachable on `/readyz`                         |
 | Fastify 4xx           | `INVALID_REQUEST`   | 4xx  | Unsupported media type, body too large, bad JSON          |
 | anything else         | `INTERNAL`          | 500  | Bug or dependency failure                                 |
 
 Planned, added with the proposal that needs them: `RATE_LIMITED` (429, only if a rate-limit
-proposal is approved). Evaluate-path `UNAVAILABLE` when Postgres is down with no cached snapshot
-lands with the evaluate change.
+proposal is approved). Evaluate-path `UNAVAILABLE` when Postgres is down (no cached snapshot yet)
+is mapped in the evaluate handler.
 
 More specific codes (e.g. `FLAG_KEY_TAKEN`) may subclass a base error but must keep its HTTP
 status. Codes are API surface: adding one needs an OpenSpec delta; renaming one is **BREAKING**.
