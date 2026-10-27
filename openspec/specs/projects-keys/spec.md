@@ -146,12 +146,3 @@ All reads and writes of projects, API keys, and environments SHALL use parameter
 
 - **WHEN** the store looks up a key by prefix or inserts an environment key
 - **THEN** values are passed as query parameters, not interpolated into the SQL string
-
-### Requirement: Evaluate placeholder after auth
-
-`POST /v1/evaluate` SHALL authenticate as an evaluate route and, when evaluation is not implemented, return HTTP 501 with a typed error code. (FR-PROJ-002)
-
-#### Scenario: Authenticated evaluate is not implemented
-
-- **WHEN** a valid evaluate key calls `POST /v1/evaluate`
-- **THEN** the response is 501 after the key type check succeeds
