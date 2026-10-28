@@ -6,7 +6,12 @@ import Fastify from "fastify";
 import { describe, expect, it } from "vitest";
 
 import { buildApp } from "../../src/api/app.js";
-import { evaluateBodySchema, evaluateResponseSchema } from "../../src/api/evaluate-schemas.js";
+import {
+  evaluateBatchBodySchema,
+  evaluateBatchResponseSchema,
+  evaluateBodySchema,
+  evaluateResponseSchema,
+} from "../../src/api/evaluate-schemas.js";
 import { errorEnvelopeSchema } from "../../src/api/schemas.js";
 import {
   compileSnapshot,
@@ -118,7 +123,11 @@ describe("evaluate contract fixtures (FR-EVAL-001/002/004)", () => {
     const fixtures = await loadFixtures();
     expect(fixtures.map((f) => f.name).sort()).toEqual([
       "admin key is forbidden on evaluate",
+      "admin key is forbidden on evaluate-batch",
       "archived flag is false",
+      "batch empty flag_keys is 400",
+      "batch fifty-one keys is 400",
+      "batch partial not_found is 200",
       "bucket 0 is in at percentage 1",
       "bucket 99 is out at percentage 99",
       "first matching rule wins",
@@ -126,6 +135,7 @@ describe("evaluate contract fixtures (FR-EVAL-001/002/004)", () => {
       "missing attribute does not match",
       "missing flag is not_found",
       "missing key is unauthorized",
+      "missing key is unauthorized on evaluate-batch",
       "percentage 0 is everyone out after rules",
     ]);
 
@@ -146,7 +156,29 @@ describe("evaluate contract fixtures (FR-EVAL-001/002/004)", () => {
         },
       };
 
-      if (fixture.response.status === 200) {
+      if (fixture.response.status === 200 && fixture.request.url === "/v1/evaluate-batch") {
+        const body = fixture.request.body as {
+          env: string;
+          user: { id?: unknown; attrs?: unknown };
+          flag_keys: string[];
+        };
+        const user = parseEvalUser(body.user);
+        const expected: Record<string, unknown> = {};
+        for (const key of body.flag_keys) {
+          const result = evaluate(compiled.flags.get(key), user, compiled.salt);
+          expected[key] = {
+            flag_key: key,
+            value: result.value,
+            reason: result.reason,
+            variant: result.variant,
+          };
+        }
+        expect(expected, fixture.name).toEqual(fixture.response.body);
+        expect(await schemaStatus(evaluateBatchBodySchema, fixture.request.body)).toBe(200);
+        expect(await responseAccepted(evaluateBatchResponseSchema, fixture.response.body)).toBe(
+          true,
+        );
+      } else if (fixture.response.status === 200) {
         const body = fixture.request.body as {
           flag_key: string;
           env: string;
@@ -166,6 +198,10 @@ describe("evaluate contract fixtures (FR-EVAL-001/002/004)", () => {
         expect(await schemaStatus(evaluateBodySchema, fixture.request.body)).toBe(200);
         expect(await responseAccepted(evaluateResponseSchema, fixture.response.body)).toBe(true);
       } else {
+        if (fixture.request.url === "/v1/evaluate-batch") {
+          const status = await schemaStatus(evaluateBatchBodySchema, fixture.request.body);
+          if (fixture.response.status === 400) expect(status).toBe(400);
+        }
         expect(await responseAccepted(errorEnvelopeSchema, fixture.response.body)).toBe(true);
       }
 
@@ -217,6 +253,18 @@ describe("evaluate contract fixtures (FR-EVAL-001/002/004)", () => {
     });
     expect(res.statusCode).toBe(503);
     expect(res.json()).toMatchObject({ error: { code: "UNAVAILABLE" } });
+
+    const batch = await app.inject({
+      method: "POST",
+      url: "/v1/evaluate-batch",
+      headers: {
+        authorization: `Bearer ${evalKey.raw}`,
+        "content-type": "application/json",
+      },
+      payload: { env: "prod", user: { id: "u1" }, flag_keys: ["checkout_v2"] },
+    });
+    expect(batch.statusCode).toBe(503);
+    expect(batch.json()).toMatchObject({ error: { code: "UNAVAILABLE" } });
     await app.close();
   });
 });

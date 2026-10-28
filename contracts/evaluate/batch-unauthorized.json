@@ -1,0 +1,28 @@
+{
+  "name": "missing key is unauthorized on evaluate-batch",
+  "auth": "none",
+  "setup": {
+    "salt": "fixture-salt",
+    "env": "prod",
+    "flags": []
+  },
+  "request": {
+    "method": "POST",
+    "url": "/v1/evaluate-batch",
+    "body": {
+      "env": "prod",
+      "user": { "id": "user-76" },
+      "flag_keys": ["checkout_v2"]
+    }
+  },
+  "response": {
+    "status": 401,
+    "body": {
+      "error": {
+        "code": "UNAUTHORIZED",
+        "message": "Missing or invalid API key",
+        "request_id": "fixture"
+      }
+    }
+  }
+}
