@@ -16,5 +16,12 @@ export {
   putEnvConfig,
   seedDemoFlags,
 } from "./flags.js";
-export { evaluateFlag } from "./evaluate.js";
-export type { EvaluateRequest, EvaluateResponse } from "./evaluate.js";
+export { evaluateBatch, evaluateFlag } from "./evaluate.js";
+export type {
+  EvaluateBatchRequest,
+  EvaluateBatchResponse,
+  EvaluateRequest,
+  EvaluateResponse,
+} from "./evaluate.js";
+export { listAudit } from "./audit.js";
+export type { AuditItemJson, AuditListJson, AuditListQueryInput } from "./audit.js";

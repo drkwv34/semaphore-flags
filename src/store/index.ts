@@ -35,8 +35,8 @@ export {
 export type { FlagEnvConfig } from "./flag-env-configs.js";
 export { listRules, deleteRulesForEnv, insertRule } from "./rules.js";
 export type { StoredRule } from "./rules.js";
-export { insertAuditEvent, listAuditEvents } from "./audit.js";
-export type { AuditEvent } from "./audit.js";
+export { insertAuditEvent, listAuditEvents, listAuditPage } from "./audit.js";
+export type { AuditEvent, AuditPageQuery } from "./audit.js";
 export { pingPostgres } from "./health.js";
 export { translatePgError } from "./pg-error.js";
 export { loadEnvSnapshot, postgresSnapshotSource } from "./snapshots.js";
