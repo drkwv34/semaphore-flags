@@ -15,7 +15,8 @@ Flag fixtures are validated against the route JSON schemas in `test/contract/`. 
 fixtures load every case, run the unit algorithm on `setup`, `inject` the HTTP request against
 an in-memory snapshot source, and assert the response matches exactly. Required evaluate cases:
 kill switch, rule match, percentage boundaries (bucket 0 and 99), percentage 0, missing
-attributes, archived, not_found, admin-key 403, missing-key 401.
+attributes, archived, not_found, batch with partial not_found, empty/oversize batch 400,
+admin-key 403, missing-key 401. Audit fixtures cover the list item shape and evaluate-key 403.
 
 `bucket-vectors.json` is the committed SHA-256 golden set (≥10 vectors, including buckets 0 and
 99). Never edit existing vectors; a diff means bucketing broke.

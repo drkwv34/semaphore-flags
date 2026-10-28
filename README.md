@@ -6,9 +6,9 @@
 Feature flags and kill switches with targeting rules, percentage rollouts, audit logs, and a fast
 HTTP evaluate API.
 
-> **Status: evaluate is live.** Projects, API keys, environments, flag/rule admin, append-only
-> audit writes, and `POST /v1/evaluate` (SHA-256 bucketing, kill switch, targeting rules) are
-> implemented. Batch evaluate, audit read, and Redis cache land as later OpenSpec changes.
+> **Status: evaluate and audit list are live.** Projects, API keys, environments, flag/rule
+> admin, append-only audit, `POST /v1/evaluate`, `POST /v1/evaluate-batch`, and `GET /v1/audit`
+> are implemented. Redis cache lands as a later OpenSpec change.
 
 ## Problem
 
@@ -93,7 +93,9 @@ Flags, rules, and audit (admin key only). Seed already created `checkout_v2` (50
 `dev`) and `kill_switch`. Archive is `POST /v1/flags/:key/archive`, not DELETE. Every mutation
 writes an append-only `audit_events` row in the same transaction (`flag.create` /
 `flag.update` / `flag.archive` / `env_config.update` plus `rule.create`/`update`/`delete` when
-the PUT rule set diffs). There is no `GET /v1/audit` yet.
+the PUT rule set diffs). List the trail with `GET /v1/audit` (admin key only): filters
+`entity_type`, `entity_id`, `action`, `since`/`until`; cursor pagination (`limit` default 50,
+max 200; `next_cursor`). Evaluate keys receive 403.
 
 ```sh
 curl -sS -o /tmp/flag.json -w '%{http_code}\n' -X POST \
@@ -114,6 +116,10 @@ curl -sS -o /tmp/get.json -w '%{http_code}\n' \
 curl -sS -o /dev/null -w '%{http_code}\n' \
   -H "Authorization: Bearer $EVALUATE_KEY" http://localhost:8080/v1/flags/smoke_flag
 # 403
+
+curl -sS -w '\n%{http_code}\n' \
+  -H "Authorization: Bearer $ADMIN_KEY" 'http://localhost:8080/v1/audit?limit=10'
+# 200 {"items":[{"id":"…","actor_key_id":"…","action":"flag.create",…}],"next_cursor":null}
 ```
 
 Evaluate (evaluate key only; admin key is `403`). Seed already created `kill_switch` (disabled
@@ -125,7 +131,7 @@ Hash bucket: `first_4_bytes_be(SHA256(project_salt + ":" + flag_key + ":" + user
 `disabled | rule_match | percentage_in | percentage_out | default | archived | not_found`
 (`default` is reserved and unused). `variant` is `"on"` when `value` is true, else `"off"`.
 
-```sh
+````sh
 curl -sS -w '\n%{http_code}\n' -X POST \
   -H "Authorization: Bearer $EVALUATE_KEY" -H "Content-Type: application/json" \
   -d '{"flag_key":"kill_switch","env":"prod","user":{"id":"u1"}}' \
@@ -137,7 +143,17 @@ curl -sS -w '\n%{http_code}\n' -X POST \
   -d '{"flag_key":"checkout_v2","env":"dev","user":{"id":"u1","attrs":{"plan":"pro"}}}' \
   http://localhost:8080/v1/evaluate
 # 200 {"flag_key":"checkout_v2","value":true,"reason":"rule_match","variant":"on"}
-```
+
+Batch evaluate (evaluate key only; max 50 keys). Unknown keys are `not_found`; a partial miss
+is still 200. Each map value matches single evaluate for that key.
+
+```sh
+curl -sS -w '\n%{http_code}\n' -X POST \
+  -H "Authorization: Bearer $EVALUATE_KEY" -H "Content-Type: application/json" \
+  -d '{"env":"prod","user":{"id":"u1"},"flag_keys":["kill_switch","missing_flag"]}' \
+  http://localhost:8080/v1/evaluate-batch
+# 200 {"kill_switch":{"flag_key":"kill_switch","value":false,"reason":"disabled","variant":"off"},"missing_flag":{"flag_key":"missing_flag","value":false,"reason":"not_found","variant":"off"}}
+````
 
 In-process microbench (soft, not a CI gate): `pnpm build && node scripts/bench-evaluate.mjs`.
 Budget is p99 < 10ms for ≤ 20 rules (NFR-PERF-001).

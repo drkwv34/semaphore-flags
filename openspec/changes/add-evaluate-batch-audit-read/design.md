@@ -52,7 +52,7 @@ evaluate (`parseFlagKey`).
 - **Alternative:** `limit`/`offset` like `GET /v1/flags`. Rejected for a growing append-only
   log.
 
-Fetch `limit+1` rows; if extra, encode `next_cursor` from the last *returned* item (not the
+Fetch `limit+1` rows; if extra, encode `next_cursor` from the last _returned_ item (not the
 extra). Seek:
 
 ```
