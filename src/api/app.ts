@@ -12,6 +12,7 @@ import {
   type Pool,
 } from "../store/index.js";
 import { requireKey, type ApiKeyFinder } from "./auth.js";
+import { registerAuditRoutes } from "./audit.js";
 import { errorHandler, UnavailableError } from "./errors.js";
 import { registerEvaluateRoutes } from "./evaluate.js";
 import { registerFlagRoutes } from "./flags.js";
@@ -154,6 +155,10 @@ export function buildApp(
     );
 
     registerFlagRoutes(app, pool);
+  }
+
+  if (findApiKey !== undefined) {
+    registerAuditRoutes(app, pool !== undefined ? { findApiKey, pool } : { findApiKey });
   }
 
   if (findApiKey !== undefined && snapshotSource !== undefined) {

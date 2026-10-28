@@ -85,6 +85,9 @@ in repositories.
 | 12  | `audit_events` immutability is a trigger, not a second DB role          | Compose/CI use the table owner; REVOKE does not bind the owner                 |
 | 13  | PUT env-config diffs rules into `rule.create`/`update`/`delete`         | One `env_config.update` plus per-rule events keeps the audit trail precise     |
 | 14  | Archived evaluate is `false` + `archived`, not `default_value`          | FR-EVAL-002; clients must not confuse archive with a kill switch               |
+| 15  | Batch evaluate reuses single `evaluate` over one env snapshot           | FR-EVAL-003; no forked algorithm, no per-key SQL                               |
+| 16  | Audit list is cursor-based (`created_at DESC, id DESC`)                 | Append-only log; offset would skip/duplicate when new rows land                |
+| 17  | Audit list index `(project_id, created_at DESC, id DESC)`               | Matches the list ORDER BY; replaces the single-column `project_id` index       |
 
 New decisions are recorded here (one row) and justified in the OpenSpec proposal that introduced
 them.

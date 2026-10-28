@@ -38,3 +38,37 @@ export const evaluateResponseSchema = {
 } as const;
 
 export const evaluateErrorResponses = errorResponses;
+
+export const evaluateBatchBodySchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["env", "user", "flag_keys"],
+  properties: {
+    env: { type: "string" },
+    user: {
+      type: "object",
+      additionalProperties: false,
+      required: ["id"],
+      properties: {
+        id: { type: "string", minLength: 1, maxLength: 128 },
+        attrs: {
+          type: "object",
+          additionalProperties: {
+            anyOf: [{ type: "string" }, { type: "number" }, { type: "boolean" }, { type: "null" }],
+          },
+        },
+      },
+    },
+    flag_keys: {
+      type: "array",
+      minItems: 1,
+      maxItems: 50,
+      items: { type: "string" },
+    },
+  },
+} as const;
+
+export const evaluateBatchResponseSchema = {
+  type: "object",
+  additionalProperties: evaluateResponseSchema,
+} as const;

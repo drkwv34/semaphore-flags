@@ -1,0 +1,44 @@
+{
+  "name": "batch partial not_found is 200",
+  "auth": "evaluate",
+  "setup": {
+    "salt": "fixture-salt",
+    "env": "prod",
+    "flags": [
+      {
+        "key": "kill_switch",
+        "archived": false,
+        "default_value": false,
+        "enabled": false,
+        "percentage": 0,
+        "rules": []
+      }
+    ]
+  },
+  "request": {
+    "method": "POST",
+    "url": "/v1/evaluate-batch",
+    "body": {
+      "env": "prod",
+      "user": { "id": "user-76" },
+      "flag_keys": ["kill_switch", "missing_flag"]
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "kill_switch": {
+        "flag_key": "kill_switch",
+        "value": false,
+        "reason": "disabled",
+        "variant": "off"
+      },
+      "missing_flag": {
+        "flag_key": "missing_flag",
+        "value": false,
+        "reason": "not_found",
+        "variant": "off"
+      }
+    }
+  }
+}

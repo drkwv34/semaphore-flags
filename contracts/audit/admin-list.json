@@ -1,0 +1,26 @@
+{
+  "name": "admin audit list item shape",
+  "request": {
+    "method": "GET",
+    "url": "/v1/audit?limit=50"
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "items": [
+        {
+          "id": "11111111-1111-4111-8111-111111111111",
+          "actor_key_id": "22222222-2222-4222-8222-222222222222",
+          "action": "flag.create",
+          "entity_type": "flag",
+          "entity_id": "33333333-3333-4333-8333-333333333333",
+          "before_json": null,
+          "after_json": { "key": "checkout_v2", "default_value": false },
+          "request_id": "r-1",
+          "created_at": "2026-10-27T12:00:00.000Z"
+        }
+      ],
+      "next_cursor": null
+    }
+  }
+}

@@ -1,4 +1,5 @@
 import type { AuditAction, AuditEntityType } from "../domain/audit.js";
+import { ValidationError } from "../domain/errors.js";
 import type { Queryable } from "./pool.js";
 import { translatePgError } from "./pg-error.js";
 
@@ -92,6 +93,66 @@ export async function listAuditEvents(
      FROM audit_events WHERE project_id = $1
      ORDER BY created_at, id`,
     [projectId],
+  );
+  return res.rows.map(toEvent);
+}
+
+export interface AuditPageQuery {
+  readonly entityType?: AuditEntityType | undefined;
+  readonly entityId?: string | undefined;
+  readonly action?: AuditAction | undefined;
+  readonly since?: Date | undefined;
+  readonly until?: Date | undefined;
+  readonly cursorId?: string | undefined;
+  readonly limit: number;
+}
+
+export async function listAuditPage(
+  db: Queryable,
+  projectId: string,
+  query: AuditPageQuery,
+): Promise<readonly AuditEvent[]> {
+  if (query.cursorId !== undefined) {
+    const found = await db.query<{ id: string }>(
+      `SELECT id FROM audit_events WHERE id = $1 AND project_id = $2`,
+      [query.cursorId, projectId],
+    );
+    if (found.rows[0] === undefined) {
+      throw new ValidationError([
+        { path: "/cursor", message: "must be a cursor from a previous page" },
+      ]);
+    }
+  }
+
+  const res = await db.query<AuditRow>(
+    `SELECT id, project_id, actor_key_id, action, entity_type, entity_id,
+            before_json, after_json, created_at, request_id
+     FROM audit_events
+     WHERE project_id = $1
+       AND ($2::text IS NULL OR entity_type = $2)
+       AND ($3::text IS NULL OR entity_id = $3)
+       AND ($4::text IS NULL OR action = $4)
+       AND ($5::timestamptz IS NULL OR created_at >= $5)
+       AND ($6::timestamptz IS NULL OR created_at < ($6::timestamptz + interval '1 millisecond'))
+       AND (
+         $7::uuid IS NULL
+         OR (created_at, id) < (
+           SELECT a.created_at, a.id FROM audit_events a
+           WHERE a.id = $7 AND a.project_id = $1
+         )
+       )
+     ORDER BY created_at DESC, id DESC
+     LIMIT $8`,
+    [
+      projectId,
+      query.entityType ?? null,
+      query.entityId ?? null,
+      query.action ?? null,
+      query.since ?? null,
+      query.until ?? null,
+      query.cursorId ?? null,
+      query.limit,
+    ],
   );
   return res.rows.map(toEvent);
 }
