@@ -3,6 +3,7 @@ name: semaphore-flags
 # Local development only. Credentials below are throwaway defaults, not secrets.
 #   docker compose up --build                  api + db + demo-client
 #   docker compose --profile cache up --build  + redis (set API_REDIS_URL=redis://redis:6379)
+#   docker compose --profile redis up --build  same as --profile cache
 
 services:
   api:
@@ -20,6 +21,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+        required: false
     restart: unless-stopped
 
   db:
@@ -40,7 +44,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    profiles: ["cache"]
+    profiles: ["cache", "redis"]
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     ports:
       - "${REDIS_PORT:-6379}:6379"
