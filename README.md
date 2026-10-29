@@ -6,9 +6,10 @@
 Feature flags and kill switches with targeting rules, percentage rollouts, audit logs, and a fast
 HTTP evaluate API.
 
-> **Status: evaluate and audit list are live.** Projects, API keys, environments, flag/rule
-> admin, append-only audit, `POST /v1/evaluate`, `POST /v1/evaluate-batch`, and `GET /v1/audit`
-> are implemented. Redis cache lands as a later OpenSpec change.
+> **Status: evaluate, audit list, cache, and metrics are live.** Projects, API keys,
+> environments, flag/rule admin, append-only audit, `POST /v1/evaluate`,
+> `POST /v1/evaluate-batch`, `GET /v1/audit`, optional Redis snapshot cache, `/metrics`, and
+> `/healthz/deps` are implemented.
 
 ## Problem
 
@@ -168,17 +169,59 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 # 403
 ```
 
-Liveness always 200; readiness is Postgres only:
+Liveness always 200; readiness is Postgres only. `GET /healthz/deps` reports postgres and redis
+as `ok`, `degraded`, or `disabled` (redis is `disabled` when `REDIS_URL` is unset). Redis never
+changes `/readyz`. Structured JSON logs include `request_id` (honour incoming `x-request-id`,
+else generate, echo on the response).
 
 ```sh
 curl -sS http://localhost:8080/healthz
 curl -sS http://localhost:8080/readyz
+curl -sS http://localhost:8080/healthz/deps
 ```
 
-Optional Redis:
+Optional Redis cache (`flags:{project_id}:{env}`, TTL 60s). Mutations delete the affected key
+after commit, before 2xx. If Redis is down, evaluate still answers from Postgres (staleness is
+bounded by the TTL).
 
 ```sh
-docker compose --profile cache up --build --wait   # set API_REDIS_URL=redis://redis:6379
+API_REDIS_URL=redis://redis:6379 docker compose --profile redis up --build --wait
+```
+
+`--profile cache` is an alias of `--profile redis`. After seed, evaluate, mutate, evaluate
+again, scrape metrics, then stop Redis and evaluate once more:
+
+```sh
+curl -sS -w '\n%{http_code}\n' -X POST \
+  -H "Authorization: Bearer $EVALUATE_KEY" -H "Content-Type: application/json" \
+  -d '{"flag_key":"kill_switch","env":"prod","user":{"id":"u1"}}' \
+  http://localhost:8080/v1/evaluate
+# 200 {"flag_key":"kill_switch","value":false,"reason":"disabled","variant":"off"}
+
+curl -sS -o /dev/null -w '%{http_code}\n' -X PUT \
+  -H "Authorization: Bearer $ADMIN_KEY" -H "Content-Type: application/json" \
+  -d '{"enabled":true,"percentage":100,"rules":[]}' \
+  http://localhost:8080/v1/flags/kill_switch/envs/prod
+# 200
+
+curl -sS -w '\n%{http_code}\n' -X POST \
+  -H "Authorization: Bearer $EVALUATE_KEY" -H "Content-Type: application/json" \
+  -d '{"flag_key":"kill_switch","env":"prod","user":{"id":"u1"}}' \
+  http://localhost:8080/v1/evaluate
+# 200 {"flag_key":"kill_switch","value":true,"reason":"percentage_in","variant":"on"}
+
+curl -sS http://localhost:8080/metrics | grep semaphore_
+# semaphore_evaluate_total{reason="disabled"} ...
+# semaphore_evaluate_duration_seconds_bucket{endpoint="single",le="0.0005"} ...
+# semaphore_admin_mutations_total{action="env_config.update"} ...
+# semaphore_cache_requests_total{result="hit"} ...
+
+docker compose --profile redis stop redis
+curl -sS -o /dev/null -w '%{http_code}\n' -X POST \
+  -H "Authorization: Bearer $EVALUATE_KEY" -H "Content-Type: application/json" \
+  -d '{"flag_key":"kill_switch","env":"prod","user":{"id":"u1"}}' \
+  http://localhost:8080/v1/evaluate
+# 200
 ```
 
 Without Docker (Postgres must already be up):
@@ -197,10 +240,11 @@ CLI: `semaphore migrate` · `semaphore seed` · `semaphore projects create --nam
 
 ```sh
 pnpm lint && pnpm typecheck && pnpm test && pnpm build
-DATABASE_URL=postgres://semaphore:semaphore@localhost:5432/semaphore pnpm test:integration
+DATABASE_URL=postgres://semaphore:semaphore@localhost:5432/semaphore \
+REDIS_URL=redis://localhost:6379 pnpm test:integration
 ```
 
-CI runs lint → format → typecheck → unit → contract → integration (Postgres 16 service) →
+CI runs lint → format → typecheck → unit → contract → integration (Postgres 16 + Redis 7) →
 build, plus Compose validation and an image build.
 
 ## Planned sections

@@ -1,0 +1,8 @@
+{
+  "name": "deps report postgres and redis statuses",
+  "request": { "method": "GET", "url": "/healthz/deps" },
+  "response": {
+    "status": 200,
+    "body": { "postgres": "degraded", "redis": "disabled" }
+  }
+}

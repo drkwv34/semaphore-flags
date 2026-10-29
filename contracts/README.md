@@ -8,6 +8,7 @@ contracts/
     <case>.json        # { "name", "request", "response" }
   evaluate/            # POST /v1/evaluate and /v1/evaluate-batch fixtures
     <case>.json        # { "name", "setup", "request", "response" }
+  ops/                 # /healthz/deps (and related ops) fixtures
   openapi/             # committed OpenAPI document (generated from route schemas)
 ```
 

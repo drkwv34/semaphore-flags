@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 
 import type { SnapshotSource } from "../domain/evaluate/index.js";
 import { ValidationError } from "../domain/errors.js";
+import type { Metrics } from "../metrics/index.js";
 import {
   evaluateBatch,
   evaluateFlag,
@@ -20,7 +21,7 @@ import {
 
 export function registerEvaluateRoutes(
   app: FastifyInstance,
-  deps: { findApiKey: ApiKeyFinder; snapshotSource: SnapshotSource },
+  deps: { findApiKey: ApiKeyFinder; snapshotSource: SnapshotSource; metrics: Metrics },
 ): void {
   const evaluateAuth = requireKey(deps.findApiKey, "evaluate");
 
@@ -36,8 +37,13 @@ export function registerEvaluateRoutes(
     async (request) => {
       const auth = request.auth;
       if (!auth) throw new UnavailableError();
+      const started = process.hrtime.bigint();
       try {
-        return await evaluateFlag(deps.snapshotSource, auth.projectId, request.body);
+        const result = await evaluateFlag(deps.snapshotSource, auth.projectId, request.body);
+        const durationSeconds = Number(process.hrtime.bigint() - started) / 1e9;
+        deps.metrics.recordEvaluate([result.reason], durationSeconds, "single");
+        request.logFields = { flag_key: result.flag_key, reason: result.reason };
+        return result;
       } catch (err) {
         if (err instanceof ValidationError) throw err;
         request.log.error({ err }, "evaluate snapshot failed");
@@ -58,8 +64,16 @@ export function registerEvaluateRoutes(
     async (request) => {
       const auth = request.auth;
       if (!auth) throw new UnavailableError();
+      const started = process.hrtime.bigint();
       try {
-        return await evaluateBatch(deps.snapshotSource, auth.projectId, request.body);
+        const result = await evaluateBatch(deps.snapshotSource, auth.projectId, request.body);
+        const durationSeconds = Number(process.hrtime.bigint() - started) / 1e9;
+        deps.metrics.recordEvaluate(
+          Object.values(result).map((entry) => entry.reason),
+          durationSeconds,
+          "batch",
+        );
+        return result;
       } catch (err) {
         if (err instanceof ValidationError) throw err;
         request.log.error({ err }, "evaluate-batch snapshot failed");

@@ -34,7 +34,33 @@ describe("GET /healthz/deps", () => {
     const res = await app.inject({ method: "GET", url: "/healthz/deps" });
 
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ postgres: "error", redis: "disabled" });
+    expect(res.json()).toEqual({ postgres: "degraded", redis: "disabled" });
+    await app.close();
+  });
+
+  it("reports redis degraded when configured but unreachable", async () => {
+    const app = buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { redisConfigured: true });
+
+    const res = await app.inject({ method: "GET", url: "/healthz/deps" });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ postgres: "degraded", redis: "degraded" });
+    await app.close();
+  });
+});
+
+describe("GET /metrics", () => {
+  it("returns Prometheus text", async () => {
+    const app = buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" });
+
+    const res = await app.inject({ method: "GET", url: "/metrics" });
+
+    expect(res.statusCode).toBe(200);
+    expect(String(res.headers["content-type"])).toMatch(/text\/plain/);
+    expect(res.body).toContain("semaphore_evaluate_total");
+    expect(res.body).toContain("semaphore_evaluate_duration_seconds");
+    expect(res.body).toContain("semaphore_admin_mutations_total");
+    expect(res.body).toContain("semaphore_cache_requests_total");
     await app.close();
   });
 });

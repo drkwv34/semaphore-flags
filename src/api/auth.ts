@@ -14,6 +14,7 @@ export interface AuthContext {
 declare module "fastify" {
   interface FastifyRequest {
     auth: AuthContext | null;
+    logFields: { flag_key?: string; reason?: string } | undefined;
   }
 }
 

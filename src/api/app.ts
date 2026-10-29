@@ -2,8 +2,16 @@ import { randomUUID } from "node:crypto";
 
 import Fastify, { type FastifyInstance, LogController } from "fastify";
 
+import {
+  createSnapshotCache,
+  type CacheLogger,
+  type CacheStore,
+  type SnapshotCache,
+} from "../cache/index.js";
 import type { Config } from "../config.js";
 import type { SnapshotSource } from "../domain/evaluate/index.js";
+import { createMetrics, type Metrics } from "../metrics/index.js";
+import type { MutationHooks } from "../services/flags.js";
 import { createProjectEnvironment, getCurrentProject } from "../services/projects.js";
 import {
   findApiKeyByPrefix,
@@ -20,11 +28,40 @@ import { errorResponses } from "./schemas.js";
 
 export const REQUEST_ID_HEADER = "x-request-id";
 
+const OPS_PROBES = new Set(["/healthz", "/readyz", "/healthz/deps", "/metrics"]);
+
+const statusBodySchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["status"],
+  properties: { status: { type: "string" } },
+} as const;
+
+const depsBodySchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["postgres", "redis"],
+  properties: {
+    postgres: { type: "string", enum: ["ok", "degraded"] },
+    redis: { type: "string", enum: ["ok", "degraded", "disabled"] },
+  },
+} as const;
+
 export interface AppDeps {
   readonly pool?: Pool;
+  readonly redisUrl?: string;
   readonly redisConfigured?: boolean;
   readonly snapshotSource?: SnapshotSource;
+  readonly snapshotCache?: SnapshotCache;
+  readonly cacheStore?: CacheStore;
   readonly findApiKey?: ApiKeyFinder;
+  readonly metrics?: Metrics;
+  readonly logDestination?: { write(chunk: string): void };
+}
+
+function isProbe(url: string): boolean {
+  const path = url.split("?")[0] ?? url;
+  return OPS_PROBES.has(path);
 }
 
 /** Composition root for the HTTP edge. Routes are registered here; they never touch SQL directly. */
@@ -32,51 +69,121 @@ export function buildApp(
   config: Pick<Config, "LOG_LEVEL" | "NODE_ENV">,
   deps: AppDeps = {},
 ): FastifyInstance {
+  const metrics = deps.metrics ?? createMetrics({ collectDefaults: config.NODE_ENV !== "test" });
+  const loggerLevel =
+    config.NODE_ENV === "test" && deps.logDestination === undefined ? "silent" : config.LOG_LEVEL;
   const app = Fastify({
     logger: {
-      level: config.NODE_ENV === "test" ? "silent" : config.LOG_LEVEL,
+      level: loggerLevel,
       redact: {
         paths: ["req.headers.authorization", 'req.headers["x-api-key"]'],
         censor: "[redacted]",
       },
+      ...(deps.logDestination !== undefined ? { stream: deps.logDestination } : {}),
     },
     requestIdHeader: REQUEST_ID_HEADER,
-    logController: new LogController({ requestIdLogLabel: "request_id" }),
+    logController: new LogController({
+      requestIdLogLabel: "request_id",
+      disableRequestLogging: true,
+    }),
     genReqId: () => randomUUID(),
   });
 
   app.decorateRequest("auth", null);
+  app.decorateRequest("logFields", undefined);
+
+  const cacheLog: CacheLogger = {
+    warn: (obj, msg) => {
+      app.log.warn(obj, msg);
+    },
+    debug: (obj, msg) => {
+      app.log.debug(obj, msg);
+    },
+  };
+
+  const pool = deps.pool;
+  const innerSource: SnapshotSource | undefined =
+    deps.snapshotSource ?? (pool === undefined ? undefined : postgresSnapshotSource(pool));
+  const snapshotCache: SnapshotCache | undefined =
+    deps.snapshotCache ??
+    (innerSource !== undefined && deps.snapshotSource === undefined
+      ? createSnapshotCache({
+          ...(deps.redisUrl !== undefined ? { redisUrl: deps.redisUrl } : {}),
+          inner: innerSource,
+          metrics,
+          log: cacheLog,
+          ...(deps.cacheStore !== undefined ? { store: deps.cacheStore } : {}),
+        })
+      : undefined);
+  const snapshotSource = snapshotCache ?? innerSource;
+  const redisConfigured = snapshotCache?.enabled === true || deps.redisConfigured === true;
+
+  app.addHook("onClose", async () => {
+    await snapshotCache?.close();
+  });
 
   app.addHook("onSend", async (request, reply) => {
     void reply.header(REQUEST_ID_HEADER, request.id);
   });
 
+  app.addHook("onResponse", (request, reply, done) => {
+    if (isProbe(request.url)) {
+      done();
+      return;
+    }
+    const fields: Record<string, unknown> = {
+      project_id: request.auth?.projectId,
+      duration_ms: Math.round(reply.elapsedTime),
+    };
+    if (request.logFields?.flag_key !== undefined) fields.flag_key = request.logFields.flag_key;
+    if (request.logFields?.reason !== undefined) fields.reason = request.logFields.reason;
+    request.log.info(fields, "request completed");
+    done();
+  });
+
   app.setErrorHandler(errorHandler);
 
-  app.get("/healthz", () => ({ status: "ok" }));
+  app.get("/healthz", { schema: { response: { 200: statusBodySchema } } }, () => ({
+    status: "ok",
+  }));
 
-  app.get("/readyz", async () => {
-    if (!deps.pool || !(await pingPostgres(deps.pool))) {
-      throw new UnavailableError("postgres unreachable");
+  app.get(
+    "/readyz",
+    { schema: { response: { 200: statusBodySchema, ...errorResponses } } },
+    async () => {
+      if (!deps.pool || !(await pingPostgres(deps.pool))) {
+        throw new UnavailableError("postgres unreachable");
+      }
+      return { status: "ok" };
+    },
+  );
+
+  app.get("/healthz/deps", { schema: { response: { 200: depsBodySchema } } }, async () => {
+    const postgres = deps.pool && (await pingPostgres(deps.pool)) ? "ok" : "degraded";
+    let redis: "ok" | "degraded" | "disabled" = "disabled";
+    if (redisConfigured) {
+      redis = snapshotCache !== undefined && (await snapshotCache.ping()) ? "ok" : "degraded";
     }
-    return { status: "ok" };
+    return { postgres, redis };
   });
 
-  app.get("/healthz/deps", async () => {
-    const postgres = deps.pool && (await pingPostgres(deps.pool)) ? "ok" : "error";
-    const body: { postgres: string; redis: string } = {
-      postgres,
-      redis: deps.redisConfigured === true ? "not_implemented" : "disabled",
-    };
-    return body;
+  app.get("/metrics", async (_request, reply) => {
+    const body = await metrics.metricsText();
+    return reply.type(metrics.contentType).send(body);
   });
 
-  const pool = deps.pool;
   const findApiKey: ApiKeyFinder | undefined =
     deps.findApiKey ??
     (pool === undefined ? undefined : (prefix) => findApiKeyByPrefix(pool, prefix));
-  const snapshotSource: SnapshotSource | undefined =
-    deps.snapshotSource ?? (pool === undefined ? undefined : postgresSnapshotSource(pool));
+
+  const mutationHooks: MutationHooks = {
+    invalidateEnvs: async (projectId, envs) => {
+      await snapshotCache?.invalidateEnvs(projectId, envs);
+    },
+    recordMutation: (action) => {
+      metrics.recordAdminMutation(action);
+    },
+  };
 
   if (pool && findApiKey) {
     app.get(
@@ -154,7 +261,7 @@ export function buildApp(
       },
     );
 
-    registerFlagRoutes(app, pool);
+    registerFlagRoutes(app, pool, mutationHooks);
   }
 
   if (findApiKey !== undefined) {
@@ -162,7 +269,7 @@ export function buildApp(
   }
 
   if (findApiKey !== undefined && snapshotSource !== undefined) {
-    registerEvaluateRoutes(app, { findApiKey, snapshotSource });
+    registerEvaluateRoutes(app, { findApiKey, snapshotSource, metrics });
   }
 
   return app;

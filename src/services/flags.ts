@@ -42,6 +42,23 @@ export interface MutationContext {
   readonly requestId: string;
 }
 
+export interface MutationHooks {
+  readonly invalidateEnvs?: (projectId: string, envs: readonly string[]) => Promise<void>;
+  readonly recordMutation?: (action: string) => void;
+}
+
+async function afterMutation(
+  hooks: MutationHooks | undefined,
+  projectId: string,
+  envs: readonly string[],
+  action: string,
+): Promise<void> {
+  if (hooks?.invalidateEnvs !== undefined) {
+    await hooks.invalidateEnvs(projectId, envs);
+  }
+  hooks?.recordMutation?.(action);
+}
+
 export interface RuleJson {
   readonly id: string;
   readonly priority: number;
@@ -168,6 +185,7 @@ export async function createFlag(
   pool: Pool,
   ctx: MutationContext,
   input: CreateFlagInput,
+  hooks?: MutationHooks,
 ): Promise<FlagDetailJson> {
   const key = parseFlagKey(input.key);
   const description = input.description ?? "";
@@ -179,7 +197,7 @@ export async function createFlag(
     throw new ValidationError([{ path: "/default_value", message: "must be a boolean" }]);
   }
 
-  return withTx(pool, async (tx) => {
+  const detail = await withTx(pool, async (tx) => {
     const flag = await insertFlag(tx, {
       projectId: ctx.projectId,
       key,
@@ -191,7 +209,7 @@ export async function createFlag(
     for (const env of environments) {
       await insertFlagEnvConfig(tx, { flagId: flag.id, environmentId: env.id });
     }
-    const detail = await loadDetail(tx, flag);
+    const created = await loadDetail(tx, flag);
     await insertAuditEvent(tx, {
       projectId: ctx.projectId,
       actorKeyId: ctx.actorKeyId,
@@ -199,11 +217,18 @@ export async function createFlag(
       entityType: "flag",
       entityId: flag.id,
       beforeJson: null,
-      afterJson: detail,
+      afterJson: created,
       requestId: ctx.requestId,
     });
-    return detail;
+    return created;
   });
+  await afterMutation(
+    hooks,
+    ctx.projectId,
+    detail.envs.map((env) => env.key),
+    "flag.create",
+  );
+  return detail;
 }
 
 export async function listFlags(
@@ -240,9 +265,10 @@ export async function patchFlag(
   ctx: MutationContext,
   rawKey: string,
   input: PatchFlagInput,
+  hooks?: MutationHooks,
 ): Promise<FlagDetailJson> {
   const key = parseFlagKey(rawKey, "/key");
-  return withTx(pool, async (tx) => {
+  const { detail, mutated } = await withTx(pool, async (tx) => {
     const flag = await lockFlagByKey(tx, ctx.projectId, key);
     if (!flag) throw new NotFoundError("flag", key);
     assertLive(flag);
@@ -259,7 +285,7 @@ export async function patchFlag(
       defaultValue === flag.defaultValue &&
       clientFallback === flag.clientFallback
     ) {
-      return loadDetail(tx, flag);
+      return { detail: await loadDetail(tx, flag), mutated: false };
     }
 
     const before = await loadDetail(tx, flag);
@@ -280,17 +306,27 @@ export async function patchFlag(
       afterJson: after,
       requestId: ctx.requestId,
     });
-    return after;
+    return { detail: after, mutated: true };
   });
+  if (mutated) {
+    await afterMutation(
+      hooks,
+      ctx.projectId,
+      detail.envs.map((env) => env.key),
+      "flag.update",
+    );
+  }
+  return detail;
 }
 
 export async function archiveFlag(
   pool: Pool,
   ctx: MutationContext,
   rawKey: string,
+  hooks?: MutationHooks,
 ): Promise<FlagDetailJson> {
   const key = parseFlagKey(rawKey, "/key");
-  return withTx(pool, async (tx) => {
+  const detail = await withTx(pool, async (tx) => {
     const flag = await lockFlagByKey(tx, ctx.projectId, key);
     if (!flag) throw new NotFoundError("flag", key);
     assertLive(flag);
@@ -309,6 +345,13 @@ export async function archiveFlag(
     });
     return after;
   });
+  await afterMutation(
+    hooks,
+    ctx.projectId,
+    detail.envs.map((env) => env.key),
+    "flag.archive",
+  );
+  return detail;
 }
 
 export async function putEnvConfig(
@@ -317,6 +360,7 @@ export async function putEnvConfig(
   rawKey: string,
   rawEnv: string,
   input: PutEnvConfigInput,
+  hooks?: MutationHooks,
 ): Promise<EnvConfigJson> {
   const key = parseFlagKey(rawKey, "/key");
   const percentage = parsePercentage(input.percentage);
@@ -325,7 +369,7 @@ export async function putEnvConfig(
   }
   const incoming = validateRules(input.rules);
 
-  return withTx(pool, async (tx) => {
+  const { detail, mutated, envKey } = await withTx(pool, async (tx) => {
     const flag = await lockFlagByKey(tx, ctx.projectId, key);
     if (!flag) throw new NotFoundError("flag", key);
     assertLive(flag);
@@ -364,7 +408,7 @@ export async function putEnvConfig(
       existingConfig.enabled === input.enabled &&
       existingConfig.percentage === percentage
     ) {
-      return toEnvJson(existingConfig, existingRules);
+      return { detail: toEnvJson(existingConfig, existingRules), mutated: false, envKey: env.key };
     }
 
     const beforeEnv =
@@ -444,8 +488,12 @@ export async function putEnvConfig(
       });
     }
 
-    return afterEnv;
+    return { detail: afterEnv, mutated: true, envKey: env.key };
   });
+  if (mutated) {
+    await afterMutation(hooks, ctx.projectId, [envKey], "env_config.update");
+  }
+  return detail;
 }
 
 export async function seedDemoFlags(pool: Pool, ctx: MutationContext): Promise<void> {

@@ -69,25 +69,26 @@ in repositories.
 
 ## Decision log
 
-| #   | Decision                                                                | Why                                                                            |
-| --- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
-| 1   | TypeScript + Fastify, not Go or Hono                                    | Portfolio keeps Go to one pin; Fastify's schema-driven serialization + OpenAPI |
-| 2   | `pg` with hand-written parameterized SQL, no ORM                        | SRS §8.2 allocation-light hot path; explicit transactions                      |
-| 3   | Compiled snapshot per `(project, env)` as the unit of cache and eval    | One Redis GET per evaluate; predictable invalidation                           |
-| 4   | Redis optional; failures degrade to Postgres                            | FR-CACHE-004 availability over cache                                           |
-| 5   | Evaluate returns 200 + `not_found` for missing flags                    | FR-EVAL-001; clients must not break on a missing flag                          |
-| 6   | `readyz` depends on Postgres only; `healthz/deps` reports Redis         | FR-OPS-001                                                                     |
-| 7   | Contract fixtures are JSON data in `contracts/`, run via `inject`       | Fast CI gate; fixtures double as documentation                                 |
-| 8   | No DI container; constructor injection wired in the composition root    | Small codebase; explicit dependencies are easier for agents to follow          |
-| 9   | In-repo `semaphore migrate` runner (advisory lock, `schema_migrations`) | Avoids a second toolchain; matches forward-only SQL + lock rules               |
-| 10  | Admin keys cannot call evaluate routes (403)                            | NFR-SEC-001 key separation; operators mint an evaluate key at create/seed      |
-| 11  | Soft-archive flags via `POST /v1/flags/:key/archive`                    | Archive is not a hard delete; DELETE would imply dropping the unique key       |
-| 12  | `audit_events` immutability is a trigger, not a second DB role          | Compose/CI use the table owner; REVOKE does not bind the owner                 |
-| 13  | PUT env-config diffs rules into `rule.create`/`update`/`delete`         | One `env_config.update` plus per-rule events keeps the audit trail precise     |
-| 14  | Archived evaluate is `false` + `archived`, not `default_value`          | FR-EVAL-002; clients must not confuse archive with a kill switch               |
-| 15  | Batch evaluate reuses single `evaluate` over one env snapshot           | FR-EVAL-003; no forked algorithm, no per-key SQL                               |
-| 16  | Audit list is cursor-based (`created_at DESC, id DESC`)                 | Append-only log; offset would skip/duplicate when new rows land                |
-| 17  | Audit list index `(project_id, created_at DESC, id DESC)`               | Matches the list ORDER BY; replaces the single-column `project_id` index       |
+| #   | Decision                                                                  | Why                                                                            |
+| --- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| 1   | TypeScript + Fastify, not Go or Hono                                      | Portfolio keeps Go to one pin; Fastify's schema-driven serialization + OpenAPI |
+| 2   | `pg` with hand-written parameterized SQL, no ORM                          | SRS §8.2 allocation-light hot path; explicit transactions                      |
+| 3   | Compiled snapshot per `(project, env)` as the unit of cache and eval      | One Redis GET per evaluate; predictable invalidation                           |
+| 4   | Redis optional; failures degrade to Postgres                              | FR-CACHE-004 availability over cache                                           |
+| 5   | Evaluate returns 200 + `not_found` for missing flags                      | FR-EVAL-001; clients must not break on a missing flag                          |
+| 6   | `readyz` depends on Postgres only; `healthz/deps` reports Redis           | FR-OPS-001                                                                     |
+| 7   | Contract fixtures are JSON data in `contracts/`, run via `inject`         | Fast CI gate; fixtures double as documentation                                 |
+| 8   | No DI container; constructor injection wired in the composition root      | Small codebase; explicit dependencies are easier for agents to follow          |
+| 9   | In-repo `semaphore migrate` runner (advisory lock, `schema_migrations`)   | Avoids a second toolchain; matches forward-only SQL + lock rules               |
+| 10  | Admin keys cannot call evaluate routes (403)                              | NFR-SEC-001 key separation; operators mint an evaluate key at create/seed      |
+| 11  | Soft-archive flags via `POST /v1/flags/:key/archive`                      | Archive is not a hard delete; DELETE would imply dropping the unique key       |
+| 12  | `audit_events` immutability is a trigger, not a second DB role            | Compose/CI use the table owner; REVOKE does not bind the owner                 |
+| 13  | PUT env-config diffs rules into `rule.create`/`update`/`delete`           | One `env_config.update` plus per-rule events keeps the audit trail precise     |
+| 14  | Archived evaluate is `false` + `archived`, not `default_value`            | FR-EVAL-002; clients must not confuse archive with a kill switch               |
+| 15  | Batch evaluate reuses single `evaluate` over one env snapshot             | FR-EVAL-003; no forked algorithm, no per-key SQL                               |
+| 16  | Audit list is cursor-based (`created_at DESC, id DESC`)                   | Append-only log; offset would skip/duplicate when new rows land                |
+| 17  | Audit list index `(project_id, created_at DESC, id DESC)`                 | Matches the list ORDER BY; replaces the single-column `project_id` index       |
+| 18  | `/healthz/deps` statuses `ok\|degraded\|disabled` (redis may be disabled) | Day 6 brief; stub `error`/`not_implemented` was never a client contract        |
 
 New decisions are recorded here (one row) and justified in the OpenSpec proposal that introduced
 them.
