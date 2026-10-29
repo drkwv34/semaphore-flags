@@ -12,6 +12,7 @@ export async function startServer(
 ): Promise<RunningServer> {
   const app = buildApp(config, {
     pool,
+    ...(config.REDIS_URL !== undefined ? { redisUrl: config.REDIS_URL } : {}),
     redisConfigured: config.REDIS_URL !== undefined,
   });
 

@@ -16,6 +16,7 @@ export {
   putEnvConfig,
   seedDemoFlags,
 } from "./flags.js";
+export type { MutationContext, MutationHooks } from "./flags.js";
 export { evaluateBatch, evaluateFlag } from "./evaluate.js";
 export type {
   EvaluateBatchRequest,

@@ -8,6 +8,7 @@ import {
   patchFlag,
   putEnvConfig,
   type CreateFlagInput,
+  type MutationHooks,
   type PatchFlagInput,
   type PutEnvConfigInput,
 } from "../services/flags.js";
@@ -55,7 +56,11 @@ function queryInt(value: number | string | undefined, fallback: number): number 
   return fallback;
 }
 
-export function registerFlagRoutes(app: FastifyInstance, pool: Pool): void {
+export function registerFlagRoutes(
+  app: FastifyInstance,
+  pool: Pool,
+  hooks: MutationHooks = {},
+): void {
   const admin = requireKey((prefix) => findApiKeyByPrefix(pool, prefix), "admin");
 
   app.post<{ Body: CreateFlagInput }>(
@@ -74,6 +79,7 @@ export function registerFlagRoutes(app: FastifyInstance, pool: Pool): void {
         pool,
         { projectId: auth.projectId, actorKeyId: auth.keyId, requestId: request.id },
         request.body,
+        hooks,
       );
       void reply.code(201);
       return flag;
@@ -136,6 +142,7 @@ export function registerFlagRoutes(app: FastifyInstance, pool: Pool): void {
         { projectId: auth.projectId, actorKeyId: auth.keyId, requestId: request.id },
         request.params.key,
         request.body,
+        hooks,
       );
     },
   );
@@ -159,6 +166,7 @@ export function registerFlagRoutes(app: FastifyInstance, pool: Pool): void {
         request.params.key,
         request.params.env,
         request.body,
+        hooks,
       );
     },
   );
@@ -179,6 +187,7 @@ export function registerFlagRoutes(app: FastifyInstance, pool: Pool): void {
         pool,
         { projectId: auth.projectId, actorKeyId: auth.keyId, requestId: request.id },
         request.params.key,
+        hooks,
       );
     },
   );
