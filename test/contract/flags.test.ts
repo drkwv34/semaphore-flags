@@ -12,6 +12,7 @@ import {
   putEnvBodySchema,
 } from "../../src/api/flag-schemas.js";
 import { errorEnvelopeSchema } from "../../src/api/schemas.js";
+import { assertConformsToOpenApi } from "./openapi-validator.js";
 
 const fixturesDir = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -64,6 +65,12 @@ describe("flag contract fixtures", () => {
       expect(fixture.request.method).toMatch(/^(GET|POST|PUT|PATCH)$/);
       expect(fixture.request.url).toMatch(/^\/v1\/flags/);
       expect(fixture.response.status).toBeGreaterThanOrEqual(200);
+      await assertConformsToOpenApi({
+        method: fixture.request.method,
+        url: fixture.request.url,
+        status: fixture.response.status,
+        body: fixture.response.body,
+      });
     }
 
     const create = fixtures.find((f) => f.name === "create flag");
