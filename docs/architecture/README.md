@@ -78,6 +78,7 @@ in repositories.
 | 5   | Evaluate returns 200 + `not_found` for missing flags                      | FR-EVAL-001; clients must not break on a missing flag                          |
 | 6   | `readyz` depends on Postgres only; `healthz/deps` reports Redis           | FR-OPS-001                                                                     |
 | 7   | Contract fixtures are JSON data in `contracts/`, run via `inject`         | Fast CI gate; fixtures double as documentation                                 |
+| 19  | `@fastify/swagger` serves `/openapi.json`; live contracts hit Postgres    | Day 7; schemas stay the source of truth; goldens gate evaluate HTTP            |
 | 8   | No DI container; constructor injection wired in the composition root      | Small codebase; explicit dependencies are easier for agents to follow          |
 | 9   | In-repo `semaphore migrate` runner (advisory lock, `schema_migrations`)   | Avoids a second toolchain; matches forward-only SQL + lock rules               |
 | 10  | Admin keys cannot call evaluate routes (403)                              | NFR-SEC-001 key separation; operators mint an evaluate key at create/seed      |

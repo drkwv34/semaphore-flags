@@ -5,12 +5,12 @@ skip coverage theater on glue code.
 
 ## Layers
 
-| Layer       | Location                                         | Runs against                          | In CI                  |
-| ----------- | ------------------------------------------------ | ------------------------------------- | ---------------------- |
-| Unit        | `src/**/*.test.ts` (colocated)                   | pure functions, `app.inject`          | every push             |
-| Contract    | `test/contract/` + `contracts/`                  | real Fastify app, in-memory snapshots | every push, merge gate |
-| Integration | `test/integration/`                              | Postgres (+ Redis) service containers | every push             |
-| Bench       | `bench/*.bench.ts` + `scripts/bench-evaluate.sh` | in-process / Compose                  | soft gate              |
+| Layer       | Location                                                   | Runs against                           | In CI                  |
+| ----------- | ---------------------------------------------------------- | -------------------------------------- | ---------------------- |
+| Unit        | `src/**/*.test.ts` (colocated)                             | pure functions, `app.inject`           | every push             |
+| Contract    | `test/contract/` + `contracts/`                            | real Fastify app; in-memory + Postgres | every push, merge gate |
+| Integration | `test/integration/`                                        | Postgres (+ Redis) service containers  | every push             |
+| Bench       | `scripts/bench-evaluate.mjs` + `scripts/bench-evaluate.sh` | in-process / Compose                   | soft (warn, not fail)  |
 
 Vitest projects: `unit`, `contract`, `integration` (see `vitest.config.ts`). `pnpm test` runs
 unit + contract. `pnpm test:integration` needs `DATABASE_URL` and a Postgres 16 instance.
@@ -39,13 +39,17 @@ unit + contract. `pnpm test:integration` needs `DATABASE_URL` and a Postgres 16 
   }
   ```
 
-- The runner builds the app with an in-memory snapshot source seeded from `setup`, sends the
-  request via `inject`, and asserts status and body with deep equality.
+- Two runners share the same JSON: in-memory `SnapshotSource` (algorithm/schema agreement) and a
+  live runner that seeds `setup` into Postgres (Redis when `REDIS_URL` is set), `inject`s the
+  request, and deep-equals the body after stripping only `request_id`, `created_at`, and
+  `updated_at`.
 - Required fixtures: kill switch, rule match, percentage boundaries (bucket 0 and 99), missing
   attributes, archived, not_found, batch with partial not_found, 401 missing key, 403 wrong key
   type, 400 malformed body.
-- OpenAPI: `contracts/openapi/openapi.json` is generated from route schemas; CI regenerates it and
-  fails on diff. Every fixture response must validate against it.
+- OpenAPI: `contracts/openapi/openapi.json` is generated from route schemas (`GET /openapi.json`);
+  CI regenerates it and fails on diff, then lints with Spectral. Every fixture response must
+  validate against it, including `/healthz`, `/healthz/deps`, and `/metrics`.
+- How to add a fixture or regenerate OpenAPI: [`docs/contracts.md`](../contracts.md).
 
 ## Integration
 
@@ -67,6 +71,7 @@ unit + contract. `pnpm test:integration` needs `DATABASE_URL` and a Postgres 16 
 
 ## CI gates (NFR-MAINT-001)
 
-`lint → format → typecheck → unit → contract → integration → build → image`. Integration runs
-against a Postgres 16 service container. Contract tests are a required status check once
-fixtures exist.
+`lint → format → typecheck → unit → integration → contract → OpenAPI lint → build → image`.
+Integration and live contract tests run against Postgres 16 (+ Redis 7) service containers.
+Contract tests are a required named step. The in-process evaluate microbench runs after build
+and prints p99 vs 10ms; it must not fail the job on shared runners.

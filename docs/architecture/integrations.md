@@ -27,8 +27,9 @@ no email and emits no webhooks.
 - Values are JSON-serialized `CompiledEnvSnapshot` with a `schema_version` field; a mismatched
   version is treated as a miss, so deploys never read incompatible cache entries.
 - The cache is a decorator over the Postgres snapshot source (`CachedSnapshotSource` wraps
-  `PostgresSnapshotSource`), both implementing `SnapshotSource`. Contract tests use an in-memory
-  implementation of the same interface.
+  `PostgresSnapshotSource`), both implementing `SnapshotSource`. In-memory contract tests fake
+  that interface; live contract tests use the real Postgres source (and Redis when `REDIS_URL`
+  is set).
 
 ## OpenAPI
 
