@@ -15,7 +15,7 @@ describe("GET /v1/audit (FR-AUD-003, NFR-SEC-001, FR-AUD-004)", () => {
     await withTestPool(async (pool) => {
       const a = await createProjectWithKeys(pool, { name: "Audit A", slug: "audit-a" });
       const b = await createProjectWithKeys(pool, { name: "Audit B", slug: "audit-b" });
-      const app = buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { pool });
+      const app = await buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { pool });
       const adminA = {
         authorization: `Bearer ${a.adminKey.raw}`,
         "content-type": "application/json",

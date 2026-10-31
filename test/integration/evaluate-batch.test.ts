@@ -26,7 +26,7 @@ describe("POST /v1/evaluate-batch (FR-EVAL-003, NFR-SEC-001)", () => {
   it("covers max 50, 51 rejected, partial not_found, agreement, and authz", async () => {
     await withTestPool(async (pool) => {
       const created = await createProjectWithKeys(pool, { name: "Batch", slug: "batch-proj" });
-      const app = buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { pool });
+      const app = await buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { pool });
       const admin = {
         authorization: `Bearer ${created.adminKey.raw}`,
         "content-type": "application/json",

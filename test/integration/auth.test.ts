@@ -21,7 +21,7 @@ describe("auth 401/403 matrix (FR-PROJ-002, NFR-SEC-001)", () => {
       });
       await revokeApiKey(pool, extraRow.id);
 
-      const app = buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { pool });
+      const app = await buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { pool });
       const bearer = (raw: string) => ({ authorization: `Bearer ${raw}` });
 
       const missing = await app.inject({ method: "GET", url: "/v1/projects/current" });
@@ -95,7 +95,7 @@ describe("auth 401/403 matrix (FR-PROJ-002, NFR-SEC-001)", () => {
   it("leaves GET /v1/__probe as 404 even with a valid admin key", async () => {
     await withTestPool(async (pool) => {
       const created = await createProjectWithKeys(pool, { name: "Probe", slug: "probe-proj" });
-      const app = buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { pool });
+      const app = await buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { pool });
 
       const unauth = await app.inject({ method: "GET", url: "/v1/__probe" });
       expect(unauth.statusCode).toBe(404);
@@ -115,7 +115,7 @@ describe("POST /v1/environments", () => {
   it("creates a custom env, rejects invalid keys, and conflicts on duplicates", async () => {
     await withTestPool(async (pool) => {
       const created = await createProjectWithKeys(pool, { name: "Envs", slug: "envs-proj" });
-      const app = buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { pool });
+      const app = await buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { pool });
       const headers = {
         authorization: `Bearer ${created.adminKey.raw}`,
         "content-type": "application/json",

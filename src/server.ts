@@ -10,7 +10,7 @@ export async function startServer(
   config: Config,
   pool: Pool = createPool(config.DATABASE_URL),
 ): Promise<RunningServer> {
-  const app = buildApp(config, {
+  const app = await buildApp(config, {
     pool,
     ...(config.REDIS_URL !== undefined ? { redisUrl: config.REDIS_URL } : {}),
     redisConfigured: config.REDIS_URL !== undefined,

@@ -7,7 +7,7 @@ import { withTestPool } from "./helpers.js";
 describe("GET /readyz (FR-OPS-001)", () => {
   it("returns 200 when Postgres answers", async () => {
     await withTestPool(async (pool) => {
-      const app = buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { pool });
+      const app = await buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { pool });
       const res = await app.inject({ method: "GET", url: "/readyz" });
       expect(res.statusCode).toBe(200);
       expect(res.json()).toEqual({ status: "ok" });
@@ -20,7 +20,7 @@ describe("GET /readyz (FR-OPS-001)", () => {
 
   it("returns 503 when the pool cannot reach Postgres", async () => {
     const pool = createPool("postgres://semaphore:semaphore@127.0.0.1:1/semaphore");
-    const app = buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { pool });
+    const app = await buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { pool });
     const res = await app.inject({ method: "GET", url: "/readyz" });
     expect(res.statusCode).toBe(503);
     expect(res.json()).toMatchObject({ error: { code: "UNAVAILABLE" } });

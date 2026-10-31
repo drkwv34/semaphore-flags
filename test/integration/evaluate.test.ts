@@ -9,7 +9,7 @@ describe("POST /v1/evaluate (FR-EVAL-001/002, FR-ERR-001, NFR-SEC-001)", () => {
   it("covers every reason, kill switch, 403, 401, and 400 against Postgres", async () => {
     await withTestPool(async (pool) => {
       const created = await createProjectWithKeys(pool, { name: "Eval", slug: "eval-proj" });
-      const app = buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { pool });
+      const app = await buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { pool });
       const admin = {
         authorization: `Bearer ${created.adminKey.raw}`,
         "content-type": "application/json",

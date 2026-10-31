@@ -33,7 +33,7 @@ describe("mapError", () => {
 
 describe("error envelope", () => {
   it("returns the structured body with request_id", async () => {
-    const app = buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" });
+    const app = await buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" });
     app.get("/boom", () => {
       throw new ValidationError([{ path: "/key", message: "required" }]);
     });

@@ -1,0 +1,7 @@
+extends: ["spectral:oas"]
+rules:
+  info-contact: off
+  operation-operationId: off
+  operation-tags: off
+  operation-description: off
+  oas3-api-servers: off
