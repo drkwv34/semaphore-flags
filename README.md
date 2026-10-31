@@ -157,7 +157,8 @@ curl -sS -w '\n%{http_code}\n' -X POST \
 ````
 
 In-process microbench (soft, not a CI gate): `pnpm build && node scripts/bench-evaluate.mjs`.
-Budget is p99 < 10ms for ≤ 20 rules (NFR-PERF-001).
+Budget is p99 < 10ms for ≤ 20 rules (NFR-PERF-001). HTTP evaluate p99 against local Compose with a
+warm cache (target <50ms): `scripts/bench-evaluate.sh` (NFR-PERF-002).
 
 Auth checks on that same route:
 
@@ -244,8 +245,9 @@ DATABASE_URL=postgres://semaphore:semaphore@localhost:5432/semaphore \
 REDIS_URL=redis://localhost:6379 pnpm test:integration
 ```
 
-CI runs lint → format → typecheck → unit → contract → integration (Postgres 16 + Redis 7) →
-build, plus Compose validation and an image build.
+CI runs lint → format → typecheck → unit → integration → contract (Postgres 16 + Redis 7) →
+OpenAPI generate-and-lint → build → in-process evaluate microbench (soft), plus Compose
+validation and an image build (no push). Contract fixtures: [`docs/contracts.md`](docs/contracts.md).
 
 ## Planned sections
 

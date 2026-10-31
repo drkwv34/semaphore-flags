@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import { buildApp } from "../../src/api/app.js";
 import { auditListQuerySchema, auditListSchema } from "../../src/api/audit-schemas.js";
 import { errorEnvelopeSchema } from "../../src/api/schemas.js";
+import { assertConformsToOpenApi } from "./openapi-validator.js";
 import { mintApiKey } from "../../src/services/api-keys.js";
 import type { ApiKeyRecord } from "../../src/store/index.js";
 
@@ -73,16 +74,32 @@ describe("audit contract fixtures (FR-AUD-003, NFR-SEC-001)", () => {
     const list = fixtures.find((f) => f.name === "admin audit list item shape");
     expect(list).toBeDefined();
     expect(await responseAccepted(auditListSchema, list?.response.body)).toBe(true);
+    if (list !== undefined) {
+      await assertConformsToOpenApi({
+        method: list.request.method,
+        url: list.request.url.split("?")[0] ?? list.request.url,
+        status: list.response.status,
+        body: list.response.body,
+      });
+    }
     expect(await schemaStatus(auditListQuerySchema, { limit: "50" })).toBe(200);
     expect(await schemaStatus(auditListQuerySchema, { limit: "201" })).toBe(400);
 
     const forbidden = fixtures.find((f) => f.name === "evaluate key is forbidden on audit");
     expect(await responseAccepted(errorEnvelopeSchema, forbidden?.response.body)).toBe(true);
+    if (forbidden !== undefined) {
+      await assertConformsToOpenApi({
+        method: forbidden.request.method,
+        url: forbidden.request.url.split("?")[0] ?? forbidden.request.url,
+        status: forbidden.response.status,
+        body: forbidden.response.body,
+      });
+    }
 
     const evalKey = mintApiKey("evaluate");
     const findApiKey = (prefix: string) =>
       Promise.resolve(prefix === evalKey.prefix ? keyRecord(evalKey, "eval-key") : undefined);
-    const app = buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { findApiKey });
+    const app = await buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { findApiKey });
     const res = await app.inject({
       method: "GET",
       url: "/v1/audit",

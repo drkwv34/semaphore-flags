@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   verify:
-    name: lint · typecheck · test · build
+    name: lint · typecheck · unit · integration · contract · build
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -59,12 +59,20 @@ jobs:
         run: pnpm typecheck
       - name: Unit tests
         run: pnpm test:unit
-      - name: Contract tests
-        run: pnpm test:contract
       - name: Integration tests
         run: pnpm test:integration
+      - name: Contract tests
+        run: pnpm test:contract
+      - name: OpenAPI generate and lint
+        run: |
+          pnpm openapi:generate
+          git diff --exit-code contracts/openapi/openapi.json
+          pnpm openapi:lint
       - name: Build
         run: pnpm build
+      - name: Evaluate microbench (soft)
+        continue-on-error: true
+        run: node scripts/bench-evaluate.mjs
       - name: Dump Postgres logs
         if: failure()
         run: docker logs "$(docker ps -q --filter ancestor=postgres:16-alpine | head -n1)" || true

@@ -73,7 +73,8 @@
       "error": {
         "code": "VALIDATION_FAILED",
         "message": "Request validation failed",
-        "request_id": "fixture"
+        "request_id": "fixture",
+        "fields": [{ "path": "/flag_keys", "message": "must NOT have more than 50 items" }]
       }
     }
   }

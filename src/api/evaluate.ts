@@ -30,6 +30,8 @@ export function registerEvaluateRoutes(
     {
       preValidation: evaluateAuth,
       schema: {
+        operationId: "evaluateFlag",
+        description: "Evaluate a single flag for a user in an environment.",
         body: evaluateBodySchema,
         response: { 200: evaluateResponseSchema, ...evaluateErrorResponses },
       },
@@ -57,6 +59,8 @@ export function registerEvaluateRoutes(
     {
       preValidation: evaluateAuth,
       schema: {
+        operationId: "evaluateBatch",
+        description: "Evaluate up to 50 flag keys for a user in an environment.",
         body: evaluateBatchBodySchema,
         response: { 200: evaluateBatchResponseSchema, ...evaluateErrorResponses },
       },

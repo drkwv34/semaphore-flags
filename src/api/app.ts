@@ -1,5 +1,7 @@
 import { randomUUID } from "node:crypto";
 
+import swagger from "@fastify/swagger";
+import swaggerUi from "@fastify/swagger-ui";
 import Fastify, { type FastifyInstance, LogController } from "fastify";
 
 import {
@@ -28,7 +30,7 @@ import { errorResponses } from "./schemas.js";
 
 export const REQUEST_ID_HEADER = "x-request-id";
 
-const OPS_PROBES = new Set(["/healthz", "/readyz", "/healthz/deps", "/metrics"]);
+const OPS_PROBES = new Set(["/healthz", "/readyz", "/healthz/deps", "/metrics", "/openapi.json"]);
 
 const statusBodySchema = {
   type: "object",
@@ -61,14 +63,14 @@ export interface AppDeps {
 
 function isProbe(url: string): boolean {
   const path = url.split("?")[0] ?? url;
-  return OPS_PROBES.has(path);
+  return OPS_PROBES.has(path) || path === "/docs" || path.startsWith("/docs/");
 }
 
 /** Composition root for the HTTP edge. Routes are registered here; they never touch SQL directly. */
-export function buildApp(
+export async function buildApp(
   config: Pick<Config, "LOG_LEVEL" | "NODE_ENV">,
   deps: AppDeps = {},
-): FastifyInstance {
+): Promise<FastifyInstance> {
   const metrics = deps.metrics ?? createMetrics({ collectDefaults: config.NODE_ENV !== "test" });
   const loggerLevel =
     config.NODE_ENV === "test" && deps.logDestination === undefined ? "silent" : config.LOG_LEVEL;
@@ -91,6 +93,24 @@ export function buildApp(
 
   app.decorateRequest("auth", null);
   app.decorateRequest("logFields", undefined);
+
+  await app.register(swagger, {
+    openapi: {
+      openapi: "3.0.3",
+      info: {
+        title: "semaphore-flags",
+        description:
+          "Feature flags and kill switches with targeting rules, percentage rollouts, and an HTTP evaluate API.",
+        version: "0.0.0",
+        license: { name: "MIT" },
+      },
+      servers: [{ url: "/" }],
+    },
+  });
+  await app.register(swaggerUi, {
+    routePrefix: "/docs",
+    uiConfig: { docExpansion: "list", deepLinking: false },
+  });
 
   const cacheLog: CacheLogger = {
     warn: (obj, msg) => {
@@ -143,13 +163,27 @@ export function buildApp(
 
   app.setErrorHandler(errorHandler);
 
-  app.get("/healthz", { schema: { response: { 200: statusBodySchema } } }, () => ({
-    status: "ok",
-  }));
+  app.get(
+    "/healthz",
+    {
+      schema: {
+        operationId: "getHealthz",
+        description: "Liveness probe. Does not call Postgres or Redis.",
+        response: { 200: statusBodySchema },
+      },
+    },
+    () => ({ status: "ok" }),
+  );
 
   app.get(
     "/readyz",
-    { schema: { response: { 200: statusBodySchema, ...errorResponses } } },
+    {
+      schema: {
+        operationId: "getReadyz",
+        description: "Readiness probe. Postgres only; Redis does not affect this route.",
+        response: { 200: statusBodySchema, ...errorResponses },
+      },
+    },
     async () => {
       if (!deps.pool || !(await pingPostgres(deps.pool))) {
         throw new UnavailableError("postgres unreachable");
@@ -158,19 +192,57 @@ export function buildApp(
     },
   );
 
-  app.get("/healthz/deps", { schema: { response: { 200: depsBodySchema } } }, async () => {
-    const postgres = deps.pool && (await pingPostgres(deps.pool)) ? "ok" : "degraded";
-    let redis: "ok" | "degraded" | "disabled" = "disabled";
-    if (redisConfigured) {
-      redis = snapshotCache !== undefined && (await snapshotCache.ping()) ? "ok" : "degraded";
-    }
-    return { postgres, redis };
-  });
+  app.get(
+    "/healthz/deps",
+    {
+      schema: {
+        operationId: "getHealthzDeps",
+        description: "Per-dependency status. Redis may be ok, degraded, or disabled.",
+        response: { 200: depsBodySchema },
+      },
+    },
+    async () => {
+      const postgres = deps.pool && (await pingPostgres(deps.pool)) ? "ok" : "degraded";
+      let redis: "ok" | "degraded" | "disabled" = "disabled";
+      if (redisConfigured) {
+        redis = snapshotCache !== undefined && (await snapshotCache.ping()) ? "ok" : "degraded";
+      }
+      return { postgres, redis };
+    },
+  );
 
-  app.get("/metrics", async (_request, reply) => {
-    const body = await metrics.metricsText();
-    return reply.type(metrics.contentType).send(body);
-  });
+  app.get(
+    "/openapi.json",
+    {
+      schema: {
+        operationId: "getOpenApi",
+        description: "Generated OpenAPI 3 document for the live route schemas.",
+        hide: true,
+      },
+    },
+    () => app.swagger(),
+  );
+
+  app.get(
+    "/metrics",
+    {
+      schema: {
+        operationId: "getMetrics",
+        description: "Prometheus text exposition of semaphore_* metrics.",
+        produces: ["text/plain"],
+        response: {
+          200: {
+            description: "Prometheus text exposition format",
+            type: "string",
+          },
+        },
+      },
+    },
+    async (_request, reply) => {
+      const body = await metrics.metricsText();
+      return reply.type(metrics.contentType).send(body);
+    },
+  );
 
   const findApiKey: ApiKeyFinder | undefined =
     deps.findApiKey ??
@@ -273,4 +345,21 @@ export function buildApp(
   }
 
   return app;
+}
+
+/** Fully routed app for OpenAPI generation. The stub pool is never queried. */
+export async function buildDocumentedApp(): Promise<FastifyInstance> {
+  const stubPool = {
+    query: () => Promise.reject(new Error("openapi: stub pool")),
+    connect: () => Promise.reject(new Error("openapi: stub pool")),
+    end: () => Promise.resolve(),
+  } as unknown as Pool;
+  return buildApp(
+    { NODE_ENV: "test", LOG_LEVEL: "info" },
+    {
+      pool: stubPool,
+      findApiKey: () => Promise.resolve(undefined),
+      snapshotSource: { get: () => Promise.resolve(undefined) },
+    },
+  );
 }

@@ -205,7 +205,7 @@ describe("evaluate contract fixtures (FR-EVAL-001/002/004)", () => {
         expect(await responseAccepted(errorEnvelopeSchema, fixture.response.body)).toBe(true);
       }
 
-      const app = buildApp(
+      const app = await buildApp(
         { NODE_ENV: "test", LOG_LEVEL: "info" },
         { findApiKey, snapshotSource: source },
       );
@@ -241,7 +241,10 @@ describe("evaluate contract fixtures (FR-EVAL-001/002/004)", () => {
         return Promise.reject(new Error("ECONNREFUSED"));
       },
     };
-    const app = buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { findApiKey, snapshotSource });
+    const app = await buildApp(
+      { NODE_ENV: "test", LOG_LEVEL: "info" },
+      { findApiKey, snapshotSource },
+    );
     const res = await app.inject({
       method: "POST",
       url: "/v1/evaluate",

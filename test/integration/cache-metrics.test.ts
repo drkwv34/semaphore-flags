@@ -21,7 +21,10 @@ describe("cache + metrics + logs (FR-CACHE-001..004, FR-OPS-001..003)", () => {
   it("invalidates after mutation so single and batch evaluate see the new value", async () => {
     await withTestPool(async (pool) => {
       const created = await createProjectWithKeys(pool, { name: "Cache", slug: "cache-proj" });
-      const app = buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { pool, redisUrl: redisUrl() });
+      const app = await buildApp(
+        { NODE_ENV: "test", LOG_LEVEL: "info" },
+        { pool, redisUrl: redisUrl() },
+      );
       const admin = {
         authorization: `Bearer ${created.adminKey.raw}`,
         "content-type": "application/json",
@@ -112,7 +115,10 @@ describe("cache + metrics + logs (FR-CACHE-001..004, FR-OPS-001..003)", () => {
   it("records a cache hit after the first evaluate", async () => {
     await withTestPool(async (pool) => {
       const created = await createProjectWithKeys(pool, { name: "Hit", slug: "hit-proj" });
-      const app = buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { pool, redisUrl: redisUrl() });
+      const app = await buildApp(
+        { NODE_ENV: "test", LOG_LEVEL: "info" },
+        { pool, redisUrl: redisUrl() },
+      );
       const admin = {
         authorization: `Bearer ${created.adminKey.raw}`,
         "content-type": "application/json",
@@ -154,7 +160,7 @@ describe("cache + metrics + logs (FR-CACHE-001..004, FR-OPS-001..003)", () => {
   it("degrades to Postgres when Redis is unreachable and reports redis degraded", async () => {
     await withTestPool(async (pool) => {
       const created = await createProjectWithKeys(pool, { name: "Down", slug: "down-proj" });
-      const app = buildApp(
+      const app = await buildApp(
         { NODE_ENV: "test", LOG_LEVEL: "info" },
         { pool, redisUrl: badRedisUrl() },
       );
@@ -207,7 +213,7 @@ describe("cache + metrics + logs (FR-CACHE-001..004, FR-OPS-001..003)", () => {
     await withTestPool(async (pool) => {
       const created = await createProjectWithKeys(pool, { name: "Logs", slug: "logs-proj" });
       const chunks: string[] = [];
-      const app = buildApp(
+      const app = await buildApp(
         { NODE_ENV: "development", LOG_LEVEL: "info" },
         {
           pool,

@@ -63,3 +63,8 @@ const p99 = samples[Math.min(samples.length - 1, Math.floor(samples.length * 0.9
 console.log(
   `bench-evaluate: ${String(iterations)} calls, 20 rules, mean ${mean.toFixed(4)}ms, p99 ${p99.toFixed(4)}ms (soft budget p99 < 10ms)`,
 );
+if (p99 >= 10) {
+  console.warn(
+    `bench-evaluate: WARN p99 ${p99.toFixed(4)}ms is at or above the 10ms in-process budget (soft; not a CI failure)`,
+  );
+}

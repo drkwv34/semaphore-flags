@@ -31,7 +31,7 @@ describe("flags admin API (FR-FLAG-001..004, FR-RULE-004, FR-AUD-001/002/004)", 
       expect(applied.applied).toEqual([]);
 
       const created = await createProjectWithKeys(pool, { name: "Flags", slug: "flags-proj" });
-      const app = buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { pool });
+      const app = await buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { pool });
       const adminAuth = { authorization: `Bearer ${created.adminKey.raw}` };
       const admin = { ...adminAuth, "content-type": "application/json" };
       const evaluateAuth = { authorization: `Bearer ${created.evaluateKey.raw}` };

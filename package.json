@@ -25,10 +25,14 @@
     "test:unit": "vitest run --project unit",
     "test:contract": "vitest run --project contract",
     "test:integration": "vitest run --project integration",
+    "openapi:generate": "tsx scripts/generate-openapi.ts",
+    "openapi:lint": "spectral lint contracts/openapi/openapi.json",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "@fastify/swagger": "^9.9.2",
+    "@fastify/swagger-ui": "^6.1.2",
     "fastify": "^5.12.5",
     "ioredis": "^6.0.0",
     "pg": "^8.23.1",
@@ -37,8 +41,10 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@stoplight/spectral-cli": "^6.17.0",
     "@types/node": "^22.20.4",
     "@types/pg": "^8.23.1",
+    "ajv": "^8.20.0",
     "eslint": "^10.11.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.12.0",
