@@ -77,7 +77,7 @@ field; evaluate JSON does not include it. CI has `verify` + `image` jobs.
 ### 6. Compose smoke as a third CI job
 
 - **Choice:** New job `demo` that does not skip `verify` or `image`. It `docker compose up
-  --build --wait`, asserts demo-client logs contain `disabled`, `rule_match`, and
+--build --wait`, asserts demo-client logs contain `disabled`, `rule_match`, and
   `percentage_in` or `percentage_out`, then tears down. Typecheck of demo-client is already
   covered by `pnpm typecheck` in `verify`.
 - **Why:** Brief wants CI to exercise demo-client at least as typecheck and ideally a Compose
