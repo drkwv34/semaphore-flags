@@ -126,7 +126,7 @@ A valid API key of the wrong type SHALL produce HTTP 403 with code `FORBIDDEN`. 
 
 ### Requirement: Idempotent demo seed
 
-`semaphore seed` SHALL create a demo project (`slug` `demo`) with default environments and one admin plus one evaluate key if missing. A second run SHALL NOT mint or print new keys. (FR-PROJ-001)
+`semaphore seed` SHALL create a demo project (`slug` `demo`) with default environments and one admin plus one evaluate key if missing. A second run SHALL NOT mint or print new keys. When `SEED_KEYS_PATH` is set and keys are minted on this run, the CLI SHALL write those raw keys to that path for local Compose only; the database SHALL still store hashes, not plaintext. (FR-PROJ-001, FR-PROJ-002)
 
 #### Scenario: First seed prints keys
 
@@ -137,6 +137,11 @@ A valid API key of the wrong type SHALL produce HTTP 403 with code `FORBIDDEN`. 
 
 - **WHEN** `semaphore seed` runs again against the same database
 - **THEN** no additional keys are minted and raw keys are not printed
+
+#### Scenario: First seed can write a local key file
+
+- **WHEN** `SEED_KEYS_PATH` is set and `semaphore seed` mints keys
+- **THEN** that path contains the admin and evaluate raw keys and the database still stores only hashes
 
 ### Requirement: Parameterized SQL for identity tables
 
