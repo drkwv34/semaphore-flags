@@ -71,7 +71,8 @@ unit + contract. `pnpm test:integration` needs `DATABASE_URL` and a Postgres 16 
 
 ## CI gates (NFR-MAINT-001)
 
-`lint → format → typecheck → unit → integration → contract → OpenAPI lint → build → image`.
+`lint → format → README client-docs check → typecheck → unit → integration → contract → OpenAPI lint → build → image`.
 Integration and live contract tests run against Postgres 16 (+ Redis 7) service containers.
 Contract tests are a required named step. The in-process evaluate microbench runs after build
-and prints p99 vs 10ms; it must not fail the job on shared runners.
+and prints p99 vs 10ms; it must not fail the job on shared runners. A separate demo-client
+Compose smoke job asserts reason codes (`disabled`, `rule_match`, percentage) after seed.
