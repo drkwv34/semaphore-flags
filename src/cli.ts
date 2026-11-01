@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
+
 import { ConfigError, loadConfig } from "./config.js";
 import { createProjectWithKeys, seedDemoProject } from "./services/projects.js";
 import { startServer } from "./server.js";
@@ -72,6 +75,16 @@ function printMintedKeys(adminRaw: string, evaluateRaw: string): void {
   writeOut(`evaluate key (shown once): ${evaluateRaw}\n`);
 }
 
+export async function writeSeedKeysFile(
+  filePath: string,
+  keys: { readonly adminKey: string; readonly evaluateKey: string },
+): Promise<void> {
+  await mkdir(path.dirname(filePath), { recursive: true });
+  const payload =
+    JSON.stringify({ admin_key: keys.adminKey, evaluate_key: keys.evaluateKey }, null, 2) + "\n";
+  await writeFile(filePath, payload, { encoding: "utf8", mode: 0o600 });
+}
+
 export async function runCli(argv: string[] = process.argv): Promise<number> {
   const command = parseCli(argv);
   if (command.name === "help") {
@@ -102,6 +115,18 @@ export async function runCli(argv: string[] = process.argv): Promise<number> {
         writeOut(`seed: project ${result.project.slug} (${result.project.id})\n`);
         if (result.adminKey !== undefined && result.evaluateKey !== undefined) {
           printMintedKeys(result.adminKey.raw, result.evaluateKey.raw);
+          const keysPath = process.env.SEED_KEYS_PATH?.trim();
+          if (keysPath !== undefined && keysPath.length > 0) {
+            try {
+              await writeSeedKeysFile(keysPath, {
+                adminKey: result.adminKey.raw,
+                evaluateKey: result.evaluateKey.raw,
+              });
+            } catch (err) {
+              const message = err instanceof Error ? err.message : String(err);
+              writeErr(`seed: failed to write SEED_KEYS_PATH (${message})\n`);
+            }
+          }
         } else {
           writeOut("seed: demo project already exists; keys not re-printed\n");
         }
