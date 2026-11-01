@@ -55,6 +55,8 @@ jobs:
         run: pnpm lint
       - name: Format
         run: pnpm format:check
+      - name: README client docs
+        run: pnpm exec tsx scripts/check-readme-docs.ts
       - name: Typecheck
         run: pnpm typecheck
       - name: Unit tests
@@ -105,3 +107,27 @@ jobs:
         run: |
           docker compose logs || true
           docker ps -a || true
+
+  demo:
+    name: demo-client compose smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare seed key dir
+        run: mkdir -p .demo-keys && chmod 777 .demo-keys
+      - name: Compose up api
+        run: docker compose up --build -d --wait api db
+      - name: Run demo-client
+        run: docker compose run --rm --no-deps demo-client | tee demo-client.log
+      - name: Assert reason codes
+        run: |
+          grep -E 'kill_payments .+ false disabled' demo-client.log
+          grep -E 'beta_ui demo_in true rule_match' demo-client.log
+          grep -Eq 'beta_ui .+ (percentage_in|percentage_out)' demo-client.log
+      - name: Dump compose / docker on failure
+        if: failure()
+        run: |
+          docker compose logs || true
+          docker ps -a || true
+          cat demo-client.log || true

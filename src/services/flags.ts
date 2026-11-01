@@ -529,4 +529,37 @@ export async function seedDemoFlags(pool: Pool, ctx: MutationContext): Promise<v
       client_fallback: "fail_closed",
     });
   }
+
+  const killPayments = await findFlagByKey(pool, ctx.projectId, "kill_payments");
+  if (killPayments === undefined) {
+    await createFlag(pool, ctx, {
+      key: "kill_payments",
+      description: "Kill switch for payment capture",
+      default_value: false,
+      client_fallback: "fail_closed",
+    });
+  }
+
+  const betaUi = await findFlagByKey(pool, ctx.projectId, "beta_ui");
+  if (betaUi === undefined) {
+    await createFlag(pool, ctx, {
+      key: "beta_ui",
+      description: "Beta UI rollout",
+      default_value: false,
+      client_fallback: "fail_closed",
+    });
+    await putEnvConfig(pool, ctx, "beta_ui", "staging", {
+      enabled: true,
+      percentage: 10,
+      rules: [
+        {
+          priority: 0,
+          attribute: "user.id",
+          op: "in",
+          value: ["demo_in"],
+          serve: true,
+        },
+      ],
+    });
+  }
 }

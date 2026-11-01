@@ -8,7 +8,7 @@ alwaysApply: false
 
 Full detail: `docs/architecture/testing-strategy.md`.
 
-- Unit tests are colocated: `src/**/foo.test.ts`. Contract tests in `test/contract/`, fixtures in
+- Unit tests are colocated: `src/**/foo.test.ts` and `scripts/**/*.test.ts`. Contract tests in `test/contract/`, fixtures in
   `contracts/`. Integration tests in `test/integration/` against real Postgres.
 - Evaluate goldens: `contracts/evaluate/bucket-vectors.json` (≥ 10 vectors, includes bucket 0 and
   99). Never edit existing vectors; a diff means bucketing broke.

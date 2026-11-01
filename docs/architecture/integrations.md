@@ -43,18 +43,22 @@ no email and emits no webhooks.
 
 ## demo-client (Compose only)
 
-- `scripts/demo-client.mjs`, run by the `demo-client` Compose service. It is a reference client,
-  not a shipped SDK (Appendix F).
+- `scripts/demo-client.ts`, run by the `demo-client` Compose service. It is a reference client,
+  not a shipped SDK (Appendix F). Node 22 type-stripping runs the TypeScript source in Compose.
 - It demonstrates the client contract we ask integrators to follow:
   - 150ms timeout per evaluate call (`AbortSignal.timeout`).
   - On timeout / network error / 5xx, apply the flag's `client_fallback`
-    (`fail_closed` → `false`, `fail_open` → `true`) and log that it did so.
+    (`fail_closed` → `false`, `fail_open` → `true`) and print `reason` `client_fallback`.
   - Never block startup indefinitely on the flag service.
-- Until the evaluate endpoint exists it only waits for `/healthz` and exits.
+- After seed it evaluates `kill_payments` (prod) and `beta_ui` (staging) for `demo_in`,
+  `demo_out`, and random ids, printing `flag subject value reason` per line.
+- Keys: `SEMAPHORE_EVALUATE_KEY` / `SEMAPHORE_URL`, or `SEED_KEYS_PATH` written on first seed
+  (`.demo-keys/demo-keys.json`, gitignored).
 
 ## Client fallback guidance (FR-DOC-001)
 
-The README "Client integration" section is a Must deliverable and states: short timeouts
-(100–200ms), per-flag `client_fallback`, kill switches use `fail_closed`, optional in-process
-caching of results for ≤10s, never block app boot on the flag service. The PR template gains a
-checklist item for it in the README/docs PR.
+The README "Client integration" section states: short timeouts (100–200ms), per-flag
+`client_fallback` (`fail_closed` → false, `fail_open` → true, rare, non-destructive UX), kill
+switches use `fail_closed`, optional in-process caching of results for ≤10s, never block app
+boot on the flag service. `client_fallback` lives on admin flag JSON, not evaluate JSON.
+`.github/pull_request_template.md` includes a checklist item for those docs.
