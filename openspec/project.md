@@ -34,7 +34,14 @@ The normative conventions live in `docs/architecture/` and `.cursor/rules/`. Sum
 ## Out of scope
 
 Multivariate variants, experimentation stats, streaming/native SDKs, rule-builder UI, admin SPA
-as a Must, multi-region replication.
+as a Must, multi-region replication. Those remain **Should** (see
+`openspec/backlog/should-scope.md`); Day 9 pin-ready closeout does not implement them.
+
+## Pin status
+
+v0.1.0 pin-ready closeout is `add-pin-ready-closeout` (Day 9). Must-scope product work through
+Day 8 is archived under `openspec/changes/archive/`. Evidence:
+[`docs/pin-ready-checklist.md`](../docs/pin-ready-checklist.md).
 
 ## Source documents
 

@@ -82,5 +82,6 @@ openspec context --json          # resolved root + config context
 | `ops`             | FR-OPS-001..003, FR-ERR |
 | `client-guidance` | FR-DOC-001              |
 
-Capability specs currently hold structural placeholders until the first feature changes are proposed,
-implemented, and archived into `specs/`.
+Shipped capability specs live under `openspec/specs/<capability>/spec.md`. Index and status:
+[`openspec/specs/README.md`](specs/README.md). Should-scope items that are not in v0.1.0:
+[`openspec/backlog/should-scope.md`](backlog/should-scope.md).
