@@ -1,6 +1,6 @@
 {
   "name": "semaphore-flags",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "description": "Feature flags and kill switches with targeting rules, percentage rollouts, audit logs, and a fast HTTP evaluate API.",
   "license": "MIT",
