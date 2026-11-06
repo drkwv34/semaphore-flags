@@ -405,6 +405,24 @@ CI runs lint → format → README client-docs check → typecheck → unit → 
 (soft), plus Compose validation, an image build (no push), and a demo-client Compose smoke that
 asserts reason codes. Contract fixtures: [`docs/contracts.md`](docs/contracts.md).
 
+## Repository metadata
+
+Values for the GitHub About panel (set manually; the API returns 403 for this account):
+
+| Field       | Value                                                                                                                 |
+| ----------- | --------------------------------------------------------------------------------------------------------------------- |
+| Description | Feature flags and kill switches with targeting rules, percentage rollouts, audit logs, and a fast HTTP evaluate API.  |
+| Topics      | `typescript`, `feature-flags`, `postgresql`, `redis`, `docker`, `github-actions`, `prometheus`, `platform`, `openapi` |
+
+Pin-ready evidence: [`docs/pin-ready-checklist.md`](docs/pin-ready-checklist.md). Should-scope
+backlog (not implemented): [`openspec/backlog/should-scope.md`](openspec/backlog/should-scope.md).
+
+## Contributing
+
+Start with [`AGENTS.md`](AGENTS.md), [`openspec/README.md`](openspec/README.md), and
+[`docs/architecture/`](docs/architecture/README.md). Conventional commits; CI must be green
+before merge.
+
 ## License
 
 [MIT](LICENSE)
