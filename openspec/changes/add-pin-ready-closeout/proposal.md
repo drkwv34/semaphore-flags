@@ -1,11 +1,11 @@
 # Proposal
 
-| Field | Value |
-| --- | --- |
-| Status | approved |
-| Approved by / on | Christian Agila / 2026-11-05 |
-| Capabilities | none (`skip_specs: true`) |
-| FR / NFR IDs | NFR-PORT-001, NFR-MAINT-001, NFR-DOC-001 (evidence only); leftover Must FRs already specified under `openspec/specs/` |
+| Field            | Value                                                                                                                 |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Status           | approved                                                                                                              |
+| Approved by / on | Christian Agila / 2026-11-05                                                                                          |
+| Capabilities     | none (`skip_specs: true`)                                                                                             |
+| FR / NFR IDs     | NFR-PORT-001, NFR-MAINT-001, NFR-DOC-001 (evidence only); leftover Must FRs already specified under `openspec/specs/` |
 
 ## Why
 
