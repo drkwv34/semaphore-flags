@@ -24,7 +24,7 @@ Admin SPA, multivariate variants, experimentation stats, streaming/native SDKs, 
 5. ~~`add-cache-metrics`~~ archived 2026-10-29.
 6. ~~`add-contract-tests-ci`~~ archived 2026-10-31.
 7. ~~`add-readme-client-docs`~~ archived 2026-11-01.
-8. ~~`add-pin-ready-closeout`~~ (this change; archive after merge).
+8. ~~`add-pin-ready-closeout`~~ archived 2026-11-06.
 
 Format for a capability `spec.md`:
 
