@@ -112,6 +112,10 @@ changes `/readyz`.
 | `GET /healthz/deps` | Postgres `ok`/`degraded`; Redis `ok`/`degraded`/`disabled`             |
 | `GET /metrics`      | Prometheus text (`semaphore_evaluate_total{reason}`, durations, cache) |
 
+An idle Postgres pool error is a structured `warn`, not a process crash: `/healthz` stays 200
+during an outage and `/readyz` returns 503 until Postgres accepts queries again on the same
+process.
+
 Structured JSON logs include `request_id` (honour incoming `x-request-id`, else generate, echo
 on the response). `GET /openapi.json` is the live OpenAPI 3 document; `/docs` is Swagger UI.
 
@@ -146,11 +150,14 @@ mkdir -p .demo-keys
 docker compose up --build --wait
 ```
 
-The api container runs `migrate`, then `seed`, then `serve`. Seed prints keys **once** on the
-api logs and, on first mint, writes them to `.demo-keys/demo-keys.json` (gitignored):
+First `docker compose up` runs one-shot `migrate` then `seed`, then the api container `serve`s.
+A failed migrate or seed fails that first start. After bootstrap, restarting only api does not
+re-run SQL, so the process can still answer `/healthz` if Postgres is down. Seed prints keys
+**once** on the seed logs and, on first mint, writes them to `.demo-keys/demo-keys.json`
+(gitignored):
 
 ```sh
-docker compose logs api
+docker compose logs seed
 # seed: project demo (…)
 # admin key (shown once): sf_admin_…
 # evaluate key (shown once): sf_eval_…
@@ -402,8 +409,9 @@ REDIS_URL=redis://localhost:6379 pnpm test:integration
 
 CI runs lint → format → README client-docs check → typecheck → unit → integration → contract
 (Postgres 16 + Redis 7) → OpenAPI generate-and-lint → build → in-process evaluate microbench
-(soft), plus Compose validation, an image build (no push), and a demo-client Compose smoke that
-asserts reason codes. Contract fixtures: [`docs/contracts.md`](docs/contracts.md).
+(soft), plus Compose validation, an image build (no push), a demo-client Compose smoke that
+asserts reason codes, and an isolated Compose smoke that the API process survives a Postgres
+outage (`scripts/check-database-outage.sh`). Contract fixtures: [`docs/contracts.md`](docs/contracts.md).
 
 ## Repository metadata
 

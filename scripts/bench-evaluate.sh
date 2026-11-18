@@ -3,7 +3,7 @@
 #
 # Prerequisites:
 #   docker compose --profile redis up --build --wait
-#   Copy the evaluate key from `docker compose logs api` (first boot / seed).
+#   Copy the evaluate key from `docker compose logs seed` (first boot / seed).
 #
 # Usage:
 #   EVALUATE_KEY=sf_eval_… ./scripts/bench-evaluate.sh

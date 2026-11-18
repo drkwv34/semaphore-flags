@@ -61,4 +61,6 @@ Rules:
 | `/healthz/deps` | Postgres + Redis (if configured)       | 200 with per-dep detail  |
 
 Redis never affects `/readyz` (FR-OPS-001 decision). Health endpoints are excluded from
-request-completed logs at `info` to avoid noise from probes.
+request-completed logs at `info` to avoid noise from probes. An idle Postgres pool `error` is
+handled on the pool (rate-limited `warn`, no URL or credentials) so the process keeps serving
+`/healthz` during an outage; `/readyz` is 503 until Postgres recovers on the same process.
