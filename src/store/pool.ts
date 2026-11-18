@@ -12,14 +12,53 @@ export type Pool = InstanceType<typeof Pool>;
 export type PoolClient = pg.PoolClient;
 export type Queryable = Pick<Pool, "query">;
 
-export function createPool(databaseUrl: string, searchPath?: string): Pool {
-  return new Pool({
+const POOL_ERROR_WARN_INTERVAL_MS = 10_000;
+
+export type PoolErrorLog = {
+  warn: (obj: Record<string, unknown>, msg: string) => void;
+};
+
+function publicPoolErrorFields(err: unknown): Record<string, unknown> {
+  const fields: Record<string, unknown> = {
+    err_name: err instanceof Error ? err.name : "Error",
+  };
+  if (typeof err === "object" && err !== null && "code" in err) {
+    const code = err.code;
+    if (typeof code === "string" || typeof code === "number") {
+      fields.err_code = String(code);
+    }
+  }
+  return fields;
+}
+
+function defaultPoolLog(): PoolErrorLog {
+  return {
+    warn(obj, msg) {
+      process.stdout.write(`${JSON.stringify({ level: "warn", msg, ...obj })}\n`);
+    },
+  };
+}
+
+export function createPool(
+  databaseUrl: string,
+  searchPath?: string,
+  log: PoolErrorLog = defaultPoolLog(),
+): Pool {
+  const pool = new Pool({
     connectionString: databaseUrl,
     max: 10,
     connectionTimeoutMillis: 5000,
     idleTimeoutMillis: 30000,
     ...(searchPath !== undefined ? { options: `-c search_path=${searchPath}` } : {}),
   });
+  let lastWarnAt = 0;
+  pool.on("error", (err: Error) => {
+    const now = Date.now();
+    if (now - lastWarnAt < POOL_ERROR_WARN_INTERVAL_MS) return;
+    lastWarnAt = now;
+    log.warn(publicPoolErrorFields(err), "postgres pool idle client error");
+  });
+  return pool;
 }
 
 export async function withClient<T>(
