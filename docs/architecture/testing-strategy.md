@@ -11,6 +11,7 @@ skip coverage theater on glue code.
 | Contract    | `test/contract/` + `contracts/`                            | real Fastify app; in-memory + Postgres | every push, merge gate |
 | Integration | `test/integration/`                                        | Postgres (+ Redis) service containers  | every push             |
 | Bench       | `scripts/bench-evaluate.mjs` + `scripts/bench-evaluate.sh` | in-process / Compose                   | soft (warn, not fail)  |
+| Outage      | `scripts/check-database-outage.sh`                         | isolated Compose (real API process)    | every push             |
 
 Vitest projects: `unit`, `contract`, `integration` (see `vitest.config.ts`). `pnpm test` runs
 unit + contract. `pnpm test:integration` needs `DATABASE_URL` and a Postgres 16 instance.
@@ -75,4 +76,6 @@ unit + contract. `pnpm test:integration` needs `DATABASE_URL` and a Postgres 16 
 Integration and live contract tests run against Postgres 16 (+ Redis 7) service containers.
 Contract tests are a required named step. The in-process evaluate microbench runs after build
 and prints p99 vs 10ms; it must not fail the job on shared runners. A separate demo-client
-Compose smoke job asserts reason codes (`disabled`, `rule_match`, percentage) after seed.
+Compose smoke job asserts reason codes (`disabled`, `rule_match`, percentage) after seed. An
+isolated Compose job (`scripts/check-database-outage.sh`) asserts the API process survives a
+Postgres outage (same container, `/healthz` 200, `/readyz` 503, recovery without restart).

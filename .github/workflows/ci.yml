@@ -108,6 +108,22 @@ jobs:
           docker compose logs || true
           docker ps -a || true
 
+  database-outage:
+    name: database outage liveness
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare seed key dir
+        run: mkdir -p .demo-keys && chmod 777 .demo-keys
+      - name: Compose Postgres outage smoke
+        run: ./scripts/check-database-outage.sh
+      - name: Dump compose / docker on failure
+        if: failure()
+        run: |
+          docker ps -a || true
+          docker compose ls || true
+
   demo:
     name: demo-client compose smoke
     runs-on: ubuntu-latest

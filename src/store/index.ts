@@ -1,5 +1,5 @@
 export { createPool, withClient, withTx, configureApiSession } from "./pool.js";
-export type { Pool, PoolClient, Queryable } from "./pool.js";
+export type { Pool, PoolClient, Queryable, PoolErrorLog } from "./pool.js";
 export { migrate, migrationsDir } from "./migrate.js";
 export { insertProject, findProjectById, findProjectBySlug } from "./projects.js";
 export type { Project } from "./projects.js";

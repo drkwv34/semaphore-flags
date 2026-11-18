@@ -28,4 +28,5 @@ Full detail: `docs/architecture/observability.md`.
 ## Health
 
 - `/healthz` liveness, no dependency calls. `/readyz` Postgres only. `/healthz/deps` detail
-  incl. Redis. Redis never affects readiness.
+  incl. Redis. Redis never affects readiness. Idle pool `error` events are handled on the pool
+  (do not kill the process; do not log URLs or credentials).

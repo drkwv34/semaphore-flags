@@ -1,26 +1,55 @@
 name: semaphore-flags
 
 # Local development only. Credentials below are throwaway defaults, not secrets.
-#   docker compose up --build                  api + db + demo-client
+#   docker compose up --build                  migrate + seed + api + db + demo-client
 #   docker compose --profile cache up --build  + redis (set API_REDIS_URL=redis://redis:6379)
 #   docker compose --profile redis up --build  same as --profile cache
+#
+# migrate and seed are one-shot. api runs `serve` only so a later restart with
+# Postgres down still binds the port (/healthz 200, /readyz 503).
 
 services:
+  migrate:
+    build: .
+    image: semaphore-flags:local
+    command: ["node", "dist/cli.js", "migrate"]
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://${POSTGRES_USER:-semaphore}:${POSTGRES_PASSWORD:-semaphore}@db:5432/${POSTGRES_DB:-semaphore}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  seed:
+    build: .
+    image: semaphore-flags:local
+    command: ["node", "dist/cli.js", "seed"]
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://${POSTGRES_USER:-semaphore}:${POSTGRES_PASSWORD:-semaphore}@db:5432/${POSTGRES_DB:-semaphore}
+      SEED_KEYS_PATH: /shared/demo-keys.json
+    volumes:
+      - ./.demo-keys:/shared
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
   api:
     build: .
-    command:
-      ["sh", "-c", "node dist/cli.js migrate && node dist/cli.js seed && node dist/cli.js serve"]
+    image: semaphore-flags:local
+    command: ["node", "dist/cli.js", "serve"]
     environment:
       NODE_ENV: ${NODE_ENV:-development}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       HTTP_ADDR: 0.0.0.0:8080
       DATABASE_URL: postgres://${POSTGRES_USER:-semaphore}:${POSTGRES_PASSWORD:-semaphore}@db:5432/${POSTGRES_DB:-semaphore}
       REDIS_URL: ${API_REDIS_URL:-}
-      SEED_KEYS_PATH: /shared/demo-keys.json
     ports:
       - "${API_PORT:-8080}:8080"
-    volumes:
-      - ./.demo-keys:/shared
     healthcheck:
       test:
         [
@@ -34,8 +63,8 @@ services:
       retries: 12
       start_period: 20s
     depends_on:
-      db:
-        condition: service_healthy
+      seed:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
         required: false
