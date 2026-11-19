@@ -4,11 +4,11 @@ One folder per capability, each with a `spec.md` describing behavior that is **s
 
 | Capability                       | Folder             | SRS requirements                                                                                       | Status                                                                                                                                          |
 | -------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Projects, API keys, environments | `projects-keys/`   | FR-PROJ-001..003, NFR-SEC-001                                                                          | Project + salt, admin vs evaluate keys, default `dev`/`staging`/`prod`                                                                          |
+| Projects, API keys, environments | `projects-keys/`   | FR-PROJ-001..003, NFR-SEC-001                                                                          | Project + salt, admin vs evaluate keys, default envs, metadata list and revoke                                                                  |
 | Flags                            | `flags/`           | FR-FLAG-001..004                                                                                       | Boolean flags, per-env config, `client_fallback`, soft archive                                                                                  |
 | Targeting rules                  | `targeting-rules/` | FR-RULE-001..004                                                                                       | Priority-ordered predicates; missing attribute is non-match                                                                                     |
 | Evaluation                       | `evaluation/`      | FR-EVAL-001..005                                                                                       | Single + batch HTTP; FR-EVAL-002 order; goldens gate merges                                                                                     |
-| Audit                            | `audit/`           | FR-AUD-001..004                                                                                        | Same-tx append-only `audit_events`; list with cursor pagination                                                                                 |
+| Audit                            | `audit/`           | FR-AUD-001..004                                                                                        | Same-tx append-only `audit_events` including `key.*`; nullable CLI actor; cursor list                                                          |
 | Caching                          | `caching/`         | FR-CACHE-001..004                                                                                      | Redis compiled snapshot TTL 60s; invalidate after commit; Redis-down degrades                                                                   |
 | Ops                              | `ops/`             | FR-OPS-001..003, FR-ERR, NFR-OBS-001, NFR-MAINT-001..002, NFR-PERF-001..002, NFR-DOC-001, NFR-PORT-001 | Health, metrics, OpenAPI, CI pyramid, Compose demo-client, README platform story. NFR-PERF-001/002 are local/soft benches, not failing CI gates |
 | Client guidance                  | `client-guidance/` | FR-DOC-001, NFR-DOC-001                                                                                | README Client integration: timeouts, fallback, kill-switch fail-closed, ≤10s cache, never block boot                                            |
@@ -25,6 +25,8 @@ Admin SPA, multivariate variants, experimentation stats, streaming/native SDKs, 
 6. ~~`add-contract-tests-ci`~~ archived 2026-10-31.
 7. ~~`add-readme-client-docs`~~ archived 2026-11-01.
 8. ~~`add-pin-ready-closeout`~~ archived 2026-11-06.
+9. ~~`restore-database-outage-liveness`~~ archived 2026-11-18.
+10. ~~`add-key-lifecycle-auditing`~~ archived 2026-11-19.
 
 Format for a capability `spec.md`:
 
