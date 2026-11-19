@@ -72,14 +72,35 @@ export async function listApiKeysByProject(
 ): Promise<readonly ApiKeyRecord[]> {
   const res = await db.query<ApiKeyRow>(
     `SELECT id, project_id, type, prefix, key_hash, created_at, revoked_at
-     FROM api_keys WHERE project_id = $1`,
+     FROM api_keys WHERE project_id = $1
+     ORDER BY created_at ASC, id ASC`,
     [projectId],
   );
   return res.rows.map(toRecord);
 }
 
-export async function revokeApiKey(db: Queryable, id: string): Promise<void> {
-  await db.query(`UPDATE api_keys SET revoked_at = now() WHERE id = $1 AND revoked_at IS NULL`, [
-    id,
-  ]);
+export async function lockApiKeyForProject(
+  db: Queryable,
+  projectId: string,
+  id: string,
+): Promise<ApiKeyRecord | undefined> {
+  const res = await db.query<ApiKeyRow>(
+    `SELECT id, project_id, type, prefix, key_hash, created_at, revoked_at
+     FROM api_keys WHERE id = $1 AND project_id = $2
+     FOR UPDATE`,
+    [id, projectId],
+  );
+  const row = res.rows[0];
+  return row ? toRecord(row) : undefined;
+}
+
+export async function revokeApiKey(db: Queryable, id: string): Promise<ApiKeyRecord | undefined> {
+  const res = await db.query<ApiKeyRow>(
+    `UPDATE api_keys SET revoked_at = now()
+     WHERE id = $1 AND revoked_at IS NULL
+     RETURNING id, project_id, type, prefix, key_hash, created_at, revoked_at`,
+    [id],
+  );
+  const row = res.rows[0];
+  return row ? toRecord(row) : undefined;
 }

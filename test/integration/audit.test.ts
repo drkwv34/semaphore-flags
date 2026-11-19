@@ -79,7 +79,13 @@ describe("GET /v1/audit (FR-AUD-003, NFR-SEC-001, FR-AUD-004)", () => {
       expect(listed.statusCode).toBe(200);
       const listedBody = json(listed) as AuditListJson;
       expect(listedBody.items.length).toBeGreaterThan(0);
-      expect(listedBody.items.every((item) => item.actor_key_id.length > 0)).toBe(true);
+      expect(
+        listedBody.items.every((item) =>
+          item.action.startsWith("key.")
+            ? item.actor_key_id === null
+            : typeof item.actor_key_id === "string" && item.actor_key_id.length > 0,
+        ),
+      ).toBe(true);
       expect(JSON.stringify(listedBody)).not.toContain(a.adminKey.raw);
       expect(JSON.stringify(listedBody)).not.toContain("other_flag");
       const other = await app.inject({ method: "GET", url: "/v1/audit", headers: adminB });

@@ -31,6 +31,9 @@ Full detail: `docs/architecture/transactions-and-consistency.md`,
 - Only `insert` and `list` exist for audit. Never write UPDATE/DELETE against `audit_events`.
 - DB enforces it: app role has INSERT/SELECT only; trigger rejects UPDATE/DELETE.
 - No secrets or key hashes in `before_json`/`after_json`.
+- `actor_key_id` may be null for bootstrap/CLI; HTTP uses the authenticated admin key.
+- Key mint (`key.create`) and effective revoke (`key.revoke`) insert audit in the same
+  transaction as the key row change.
 
 ## Migrations
 

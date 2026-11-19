@@ -83,8 +83,10 @@ Hash bucket: `first_4_bytes_be(SHA256(project_salt + ":" + flag_key + ":" + user
 
 Admin mutations insert an append-only `audit_events` row in the **same Postgres transaction**
 as the change (`flag.create` / `flag.update` / `flag.archive` / `env_config.update`, plus
-`rule.create` / `update` / `delete` when the PUT rule set diffs). Audit rows are never updated
-or deleted (application code has no such path; the database trigger rejects `UPDATE`/`DELETE`).
+`rule.create` / `update` / `delete` when the PUT rule set diffs, and `key.create` / `key.revoke`
+for API-key mint and revoke). Bootstrap and operator CLI events may have a null `actor_key_id`.
+Audit rows are never updated or deleted (application code has no such path; the database trigger
+rejects `UPDATE`/`DELETE`).
 
 List the trail with `GET /v1/audit` (admin key only): filters `entity_type`, `entity_id`,
 `action`, `since`/`until`; cursor pagination (`limit` default 50, max 200; `next_cursor`).
@@ -138,6 +140,11 @@ Format: `sf_admin_<8 hex>_<64 hex>` or `sf_eval_<8 hex>_<64 hex>`. The stored `p
 (`sf_admin_<8 hex>`) is used for lookup; only a SHA-256 hash of the full secret is persisted.
 Comparison is constant-time. Revoked keys (`revoked_at` set) are `401`. Raw keys are printed
 **once** at `semaphore projects create` / `semaphore seed` and never stored or logged.
+`GET /v1/keys` lists metadata (`id`, `type`, `prefix`, `created_at`, `revoked_at`) for the
+authenticated project. `POST /v1/keys/:id/revoke` (admin only) is idempotent, 404 for unknown
+or foreign ids, and 403 for an evaluate key. Self-revoke is allowed; the next request with that
+key is 401. Operators can also `semaphore keys list --project <slug>` and
+`semaphore keys revoke --project <slug> --key-id <uuid>` using `DATABASE_URL`.
 
 Send `Authorization: Bearer <raw-key>`. Missing, malformed, unknown, or revoked → `401`. Valid
 key of the wrong type → `403`. `project_id` comes only from the key.
@@ -200,6 +207,15 @@ curl -sS -o /dev/null -w '%{http_code}\n' \
 curl -sS -w '\n%{http_code}\n' \
   -H "Authorization: Bearer $ADMIN_KEY" 'http://localhost:8080/v1/audit?limit=10'
 # 200 {"items":[{"id":"…","actor_key_id":"…","action":"flag.create",…}],"next_cursor":null}
+
+curl -sS -w '\n%{http_code}\n' \
+  -H "Authorization: Bearer $ADMIN_KEY" http://localhost:8080/v1/keys
+# 200 {"items":[{"id":"…","type":"admin","prefix":"sf_admin_…","created_at":"…","revoked_at":null},…]}
+
+# Copy an evaluate key id from the list, then:
+curl -sS -o /tmp/revoke.json -w '%{http_code}\n' -X POST \
+  -H "Authorization: Bearer $ADMIN_KEY" http://localhost:8080/v1/keys/$EVAL_KEY_ID/revoke
+# 200
 ```
 
 Evaluate examples against the older seed flags:
@@ -294,6 +310,7 @@ pnpm dev
 ```
 
 CLI: `semaphore migrate` · `semaphore seed` · `semaphore projects create --name --slug` ·
+`semaphore keys list --project` · `semaphore keys revoke --project --key-id` ·
 `semaphore serve`.
 
 ## Demo

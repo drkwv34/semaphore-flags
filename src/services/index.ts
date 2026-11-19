@@ -1,5 +1,11 @@
-export { mintApiKey } from "./api-keys.js";
-export type { MintedApiKey } from "./api-keys.js";
+export {
+  mintApiKey,
+  listProjectApiKeys,
+  revokeProjectApiKey,
+  listKeysByProjectSlug,
+  revokeKeyByProjectSlug,
+} from "./api-keys.js";
+export type { MintedApiKey, KeyMetadataJson, KeyListJson, KeyMutationContext } from "./api-keys.js";
 export {
   createProjectWithKeys,
   seedDemoProject,

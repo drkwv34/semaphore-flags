@@ -22,7 +22,7 @@ export interface AuditListQueryInput {
 
 export interface AuditItemJson {
   readonly id: string;
-  readonly actor_key_id: string;
+  readonly actor_key_id: string | null;
   readonly action: AuditAction;
   readonly entity_type: AuditEntityType;
   readonly entity_id: string;

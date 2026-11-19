@@ -26,6 +26,7 @@ import { registerAuditRoutes } from "./audit.js";
 import { errorHandler, UnavailableError } from "./errors.js";
 import { registerEvaluateRoutes } from "./evaluate.js";
 import { registerFlagRoutes } from "./flags.js";
+import { registerKeyRoutes } from "./keys.js";
 import { errorResponses } from "./schemas.js";
 
 export const REQUEST_ID_HEADER = "x-request-id";
@@ -338,6 +339,11 @@ export async function buildApp(
 
   if (findApiKey !== undefined) {
     registerAuditRoutes(app, pool !== undefined ? { findApiKey, pool } : { findApiKey });
+    registerKeyRoutes(app, {
+      findApiKey,
+      ...(pool !== undefined ? { pool } : {}),
+      hooks: mutationHooks,
+    });
   }
 
   if (findApiKey !== undefined && snapshotSource !== undefined) {

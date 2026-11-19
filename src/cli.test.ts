@@ -31,6 +31,34 @@ describe("parseCli", () => {
   it("rejects projects create without flags", () => {
     expect(parseCli(["node", "cli", "projects", "create"]).name).toBe("error");
   });
+
+  it("parses keys list and revoke", () => {
+    expect(parseCli(["node", "cli", "keys", "list", "--project", "demo"])).toEqual({
+      name: "keys-list",
+      project: "demo",
+    });
+    expect(
+      parseCli([
+        "node",
+        "cli",
+        "keys",
+        "revoke",
+        "--project",
+        "demo",
+        "--key-id",
+        "11111111-1111-4111-8111-111111111111",
+      ]),
+    ).toEqual({
+      name: "keys-revoke",
+      project: "demo",
+      keyId: "11111111-1111-4111-8111-111111111111",
+    });
+  });
+
+  it("rejects keys commands without required flags", () => {
+    expect(parseCli(["node", "cli", "keys", "list"]).name).toBe("error");
+    expect(parseCli(["node", "cli", "keys", "revoke", "--project", "demo"]).name).toBe("error");
+  });
 });
 
 describe("writeSeedKeysFile", () => {

@@ -74,6 +74,24 @@ describe("audit contract fixtures (FR-AUD-003, NFR-SEC-001)", () => {
     const list = fixtures.find((f) => f.name === "admin audit list item shape");
     expect(list).toBeDefined();
     expect(await responseAccepted(auditListSchema, list?.response.body)).toBe(true);
+    expect(
+      await responseAccepted(auditListSchema, {
+        items: [
+          {
+            id: "11111111-1111-4111-8111-111111111111",
+            actor_key_id: null,
+            action: "key.create",
+            entity_type: "key",
+            entity_id: "33333333-3333-4333-8333-333333333333",
+            before_json: null,
+            after_json: { id: "33333333-3333-4333-8333-333333333333", type: "admin" },
+            request_id: "cli:seed:r-1",
+            created_at: "2026-11-18T00:00:00.000Z",
+          },
+        ],
+        next_cursor: null,
+      }),
+    ).toBe(true);
     if (list !== undefined) {
       await assertConformsToOpenApi({
         method: list.request.method,

@@ -16,6 +16,8 @@ Full detail: `docs/architecture/error-handling.md`, `docs/architecture/api-conve
 - Handlers: parse → service call → map to response. No SQL, no business logic.
 - Auth: `Authorization: Bearer <key>`; route declares required key type (`admin` | `evaluate`).
   401 missing/invalid/revoked, 403 wrong type. `project_id` comes from the key only.
+- `GET /v1/keys` and `POST /v1/keys/:id/revoke` are admin-only. List/revoke responses and audit
+  payloads never include raw secrets or `key_hash`. Foreign or unknown revoke targets are 404.
 
 ## Errors
 

@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
+import { buildApp } from "../../src/api/app.js";
 import { createPool } from "../../src/store/index.js";
 import { withTestDatabase } from "./helpers.js";
 
@@ -32,6 +33,7 @@ describe("semaphore CLI (FR-PROJ-001)", () => {
       const first = await semaphore(databaseUrl, ["migrate"]);
       expect(first.stdout).toContain("0001_projects_keys_envs.sql");
       expect(first.stdout).toContain("0002_flags_rules_audit.sql");
+      expect(first.stdout).toContain("0004_key_audit_actor.sql");
       const second = await semaphore(databaseUrl, ["migrate"]);
       expect(second.stdout).toContain("already up to date");
 
@@ -144,6 +146,70 @@ describe("semaphore CLI (FR-PROJ-001)", () => {
       expect(killPaymentsProd.rows[0]).toMatchObject({ enabled: false, percentage: 0 });
       const flagsAgain = await pool.query("SELECT id FROM flags");
       expect(flagsAgain.rows).toHaveLength(4);
+      await pool.end();
+    });
+  });
+
+  it("lists and revokes keys for a project from a clean database", async () => {
+    await withTestDatabase(async (databaseUrl) => {
+      await semaphore(databaseUrl, ["migrate"]);
+      const created = await semaphore(databaseUrl, [
+        "projects",
+        "create",
+        "--name",
+        "Keys",
+        "--slug",
+        "keys-cli",
+      ]);
+      const evaluate = /evaluate key \(shown once\): (sf_eval_[0-9a-f]{8}_[0-9a-f]{64})/.exec(
+        created.stdout,
+      );
+      expect(evaluate?.[1]).toBeDefined();
+
+      const listed = await semaphore(databaseUrl, ["keys", "list", "--project", "keys-cli"]);
+      expect(listed.stdout).toMatch(/type=admin/);
+      expect(listed.stdout).toMatch(/type=evaluate/);
+      expect(listed.stdout).not.toContain(evaluate?.[1] ?? "missing");
+      const evalId = /key: ([0-9a-f-]{36}) type=evaluate/.exec(listed.stdout);
+      expect(evalId?.[1]).toBeDefined();
+
+      const revoked = await semaphore(databaseUrl, [
+        "keys",
+        "revoke",
+        "--project",
+        "keys-cli",
+        "--key-id",
+        evalId?.[1] ?? "",
+      ]);
+      expect(revoked.stdout).toMatch(/revoked: /);
+      expect(revoked.stdout).toContain(evalId?.[1] ?? "");
+
+      const pool = createPool(databaseUrl);
+      const built = await buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { pool });
+      const after = await built.inject({
+        method: "POST",
+        url: "/v1/evaluate",
+        headers: {
+          authorization: `Bearer ${evaluate?.[1] ?? ""}`,
+          "content-type": "application/json",
+        },
+        payload: { flag_key: "missing_flag", env: "dev", user: { id: "u1" } },
+      });
+      expect(after.statusCode).toBe(401);
+      const events = await pool.query<{
+        action: string;
+        actor_key_id: string | null;
+        request_id: string;
+      }>("SELECT action, actor_key_id, request_id FROM audit_events WHERE action = 'key.revoke'");
+      expect(events.rows).toHaveLength(1);
+      expect(events.rows[0]?.actor_key_id).toBeNull();
+      expect(events.rows[0]?.request_id.startsWith("cli:keys-revoke:")).toBe(true);
+      const payload = await pool.query<{ after_json: unknown; before_json: unknown }>(
+        "SELECT after_json, before_json FROM audit_events WHERE action = 'key.revoke'",
+      );
+      expect(JSON.stringify(payload.rows)).not.toContain(evaluate?.[1] ?? "missing");
+      expect(JSON.stringify(payload.rows)).not.toContain("key_hash");
+      await built.close();
       await pool.end();
     });
   });

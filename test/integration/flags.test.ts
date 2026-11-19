@@ -297,7 +297,11 @@ describe("flags admin API (FR-FLAG-001..004, FR-RULE-004, FR-AUD-001/002/004)", 
         "SELECT id FROM api_keys WHERE prefix = $1",
         [created.adminKey.prefix],
       );
-      expect(events.every((e) => e.actorKeyId === adminRow.rows[0]?.id)).toBe(true);
+      const bootstrap = events.filter((e) => e.action.startsWith("key."));
+      const adminEvents = events.filter((e) => !e.action.startsWith("key."));
+      expect(bootstrap).toHaveLength(2);
+      expect(bootstrap.every((e) => e.actorKeyId === null)).toBe(true);
+      expect(adminEvents.every((e) => e.actorKeyId === adminRow.rows[0]?.id)).toBe(true);
       expect(events.every((e) => e.requestId.length > 0)).toBe(true);
       expect(JSON.stringify(events)).not.toContain(created.adminKey.raw);
       expect(JSON.stringify(events)).not.toContain("key_hash");
