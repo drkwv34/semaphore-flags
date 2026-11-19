@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { DUMMY_KEY_HASH, hashApiKey, hashesMatch, parseApiKey } from "./api-key.js";
+import { DUMMY_KEY_HASH, hashApiKey, hashesMatch, parseApiKey, parseKeyId } from "./api-key.js";
+import { ValidationError } from "./errors.js";
 
 const adminRaw = "sf_admin_deadbeef_" + "ab".repeat(32);
 const evalRaw = "sf_eval_cafef00d_" + "cd".repeat(32);
@@ -23,6 +24,15 @@ describe("parseApiKey", () => {
     "sf_admin_DEADBEEF_" + "ab".repeat(32),
   ])("rejects malformed %s", (raw) => {
     expect(parseApiKey(raw)).toBeUndefined();
+  });
+});
+
+describe("parseKeyId", () => {
+  it("accepts a uuid and rejects junk", () => {
+    expect(parseKeyId("11111111-1111-4111-8111-111111111111")).toBe(
+      "11111111-1111-4111-8111-111111111111",
+    );
+    expect(() => parseKeyId("not-a-uuid")).toThrow(ValidationError);
   });
 });
 

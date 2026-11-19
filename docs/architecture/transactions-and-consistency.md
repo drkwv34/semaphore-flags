@@ -31,8 +31,9 @@ that.
 
 - The audit insert is in the **same transaction** as the change it describes. No audit row, no
   change; no change, no audit row.
-- `before_json` / `after_json` store the domain representation, not raw rows. Secrets (key
-  hashes) never appear in audit JSON.
+- `before_json` / `after_json` store the domain representation, not raw rows. Secrets (raw keys
+  and key hashes) never appear in audit JSON. `actor_key_id` may be null for bootstrap and
+  operator CLI events; HTTP mutations use the authenticated admin key.
 - No-op mutations (after equals before) return 200 and write no audit row. The services layer
   compares domain objects, not JSON strings.
 - Immutability is enforced in the database, not just by convention: the application role has

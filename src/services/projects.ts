@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 
 import { DEFAULT_ENV_KEYS } from "../domain/env-key.js";
 import { parseEnvKey } from "../domain/env-key.js";
@@ -13,7 +13,6 @@ import {
   ensureEnvironment,
   findProjectById,
   findProjectBySlug,
-  insertApiKey,
   insertEnvironment,
   insertProject,
   listApiKeysByProject,
@@ -22,7 +21,7 @@ import {
   type Pool,
   type Project,
 } from "../store/index.js";
-import { mintApiKey, type MintedApiKey } from "./api-keys.js";
+import { mintApiKey, persistMintedKey, type MintedApiKey } from "./api-keys.js";
 import { seedDemoFlags } from "./flags.js";
 
 export interface CreatedProject {
@@ -38,9 +37,11 @@ function randomSalt(): string {
 export async function createProjectWithKeys(
   pool: Pool,
   input: { name: string; slug: string },
+  options: { requestId?: string } = {},
 ): Promise<CreatedProject> {
   const name = parseProjectName(input.name);
   const slug = parseProjectSlug(input.slug);
+  const requestId = options.requestId ?? `cli:projects-create:${randomUUID()}`;
   const adminKey = mintApiKey("admin");
   const evaluateKey = mintApiKey("evaluate");
 
@@ -49,18 +50,8 @@ export async function createProjectWithKeys(
     for (const key of DEFAULT_ENV_KEYS) {
       await insertEnvironment(tx, { projectId: created.id, key });
     }
-    await insertApiKey(tx, {
-      projectId: created.id,
-      type: adminKey.type,
-      prefix: adminKey.prefix,
-      keyHash: adminKey.keyHash,
-    });
-    await insertApiKey(tx, {
-      projectId: created.id,
-      type: evaluateKey.type,
-      prefix: evaluateKey.prefix,
-      keyHash: evaluateKey.keyHash,
-    });
+    await persistMintedKey(tx, created.id, adminKey, requestId);
+    await persistMintedKey(tx, created.id, evaluateKey, requestId);
     return created;
   });
 
@@ -86,6 +77,7 @@ async function seedFlagsWithAdmin(pool: Pool, projectId: string): Promise<void> 
 }
 
 export async function seedDemoProject(pool: Pool): Promise<SeedResult> {
+  const requestId = `cli:seed:${randomUUID()}`;
   const existing = await findProjectBySlug(pool, DEMO_PROJECT_SLUG);
   if (existing) {
     await withTx(pool, async (tx) => {
@@ -106,21 +98,11 @@ export async function seedDemoProject(pool: Pool): Promise<SeedResult> {
     await withTx(pool, async (tx) => {
       if (!hasAdmin) {
         adminKey = mintApiKey("admin");
-        await insertApiKey(tx, {
-          projectId: existing.id,
-          type: adminKey.type,
-          prefix: adminKey.prefix,
-          keyHash: adminKey.keyHash,
-        });
+        await persistMintedKey(tx, existing.id, adminKey, requestId);
       }
       if (!hasEvaluate) {
         evaluateKey = mintApiKey("evaluate");
-        await insertApiKey(tx, {
-          projectId: existing.id,
-          type: evaluateKey.type,
-          prefix: evaluateKey.prefix,
-          keyHash: evaluateKey.keyHash,
-        });
+        await persistMintedKey(tx, existing.id, evaluateKey, requestId);
       }
     });
     await seedFlagsWithAdmin(pool, existing.id);
@@ -132,10 +114,14 @@ export async function seedDemoProject(pool: Pool): Promise<SeedResult> {
     };
   }
 
-  const created = await createProjectWithKeys(pool, {
-    name: DEMO_PROJECT_NAME,
-    slug: DEMO_PROJECT_SLUG,
-  });
+  const created = await createProjectWithKeys(
+    pool,
+    {
+      name: DEMO_PROJECT_NAME,
+      slug: DEMO_PROJECT_SLUG,
+    },
+    { requestId },
+  );
   await seedFlagsWithAdmin(pool, created.project.id);
   return {
     project: created.project,

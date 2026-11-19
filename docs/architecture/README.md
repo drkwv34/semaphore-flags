@@ -81,6 +81,7 @@ in repositories.
 | 19  | `@fastify/swagger` serves `/openapi.json`; live contracts hit Postgres    | Day 7; schemas stay the source of truth; goldens gate evaluate HTTP            |
 | 20  | Compose `demo-client` is TypeScript (`scripts/demo-client.ts`)            | Day 8; Node 22 type-stripping; FR-DOC-001 timeout + fallback; no shipped SDK   |
 | 21  | Handle idle `pg` pool `error`; Compose migrate/seed are one-shot          | Unhandled pool `error` killed the process; concatenated serve blocked liveness |
+| 22  | Nullable `actor_key_id`; HTTP/CLI key list and revoke                     | Bootstrap/CLI have no API actor (SRS §6); mint/revoke share one audited tx     |
 | 8   | No DI container; constructor injection wired in the composition root      | Small codebase; explicit dependencies are easier for agents to follow          |
 | 9   | In-repo `semaphore migrate` runner (advisory lock, `schema_migrations`)   | Avoids a second toolchain; matches forward-only SQL + lock rules               |
 | 10  | Admin keys cannot call evaluate routes (403)                              | NFR-SEC-001 key separation; operators mint an evaluate key at create/seed      |

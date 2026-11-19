@@ -27,6 +27,9 @@
 - 401 for missing/invalid/revoked keys, 403 for a valid key of the wrong type. The response
   never reveals which part of the key was wrong.
 - The resolved `project_id` comes only from the key, never from the request body.
+- `GET /v1/keys` (admin) lists `{ id, type, prefix, created_at, revoked_at }` for the key's
+  project only. `POST /v1/keys/:id/revoke` (admin) is idempotent, 404 for unknown or foreign
+  ids, and never returns the raw secret or `key_hash`. Self-revoke is allowed.
 
 ## Configuration
 

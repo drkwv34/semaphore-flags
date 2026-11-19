@@ -6,7 +6,7 @@ import { translatePgError } from "./pg-error.js";
 export interface AuditEvent {
   readonly id: string;
   readonly projectId: string;
-  readonly actorKeyId: string;
+  readonly actorKeyId: string | null;
   readonly action: AuditAction;
   readonly entityType: AuditEntityType;
   readonly entityId: string;
@@ -19,7 +19,7 @@ export interface AuditEvent {
 interface AuditRow {
   id: string;
   project_id: string;
-  actor_key_id: string;
+  actor_key_id: string | null;
   action: AuditAction;
   entity_type: AuditEntityType;
   entity_id: string;
@@ -48,7 +48,7 @@ export async function insertAuditEvent(
   db: Queryable,
   input: {
     projectId: string;
-    actorKeyId: string;
+    actorKeyId: string | null;
     action: AuditAction;
     entityType: AuditEntityType;
     entityId: string;

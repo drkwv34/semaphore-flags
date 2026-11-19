@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 
+import { randomUUID } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import { ConfigError, loadConfig } from "./config.js";
+import { listKeysByProjectSlug, revokeKeyByProjectSlug } from "./services/api-keys.js";
 import { createProjectWithKeys, seedDemoProject } from "./services/projects.js";
 import { startServer } from "./server.js";
 import { createPool, migrate } from "./store/index.js";
@@ -14,6 +16,8 @@ export type CliCommand =
   | { readonly name: "seed" }
   | { readonly name: "serve" }
   | { readonly name: "projects-create"; readonly nameFlag: string; readonly slug: string }
+  | { readonly name: "keys-list"; readonly project: string }
+  | { readonly name: "keys-revoke"; readonly project: string; readonly keyId: string }
   | { readonly name: "error"; readonly message: string };
 
 const HELP = `semaphore — feature-flag service CLI
@@ -22,6 +26,8 @@ Usage:
   semaphore migrate
   semaphore seed
   semaphore projects create --name <name> --slug <slug>
+  semaphore keys list --project <slug>
+  semaphore keys revoke --project <slug> --key-id <uuid>
   semaphore serve
   semaphore --help
 `;
@@ -59,6 +65,33 @@ export function parseCli(argv: string[]): CliCommand {
     }
     return { name: "projects-create", nameFlag, slug };
   }
+  if (cmd === "keys") {
+    const sub = args[1];
+    const rest = args.slice(2);
+    if (sub === "list") {
+      const project = flagValue(rest, "--project");
+      if (project === undefined) {
+        return { name: "error", message: "usage: semaphore keys list --project <slug>" };
+      }
+      return { name: "keys-list", project };
+    }
+    if (sub === "revoke") {
+      const project = flagValue(rest, "--project");
+      const keyId = flagValue(rest, "--key-id");
+      if (project === undefined || keyId === undefined) {
+        return {
+          name: "error",
+          message: "usage: semaphore keys revoke --project <slug> --key-id <uuid>",
+        };
+      }
+      return { name: "keys-revoke", project, keyId };
+    }
+    return {
+      name: "error",
+      message:
+        "usage: semaphore keys list --project <slug> | keys revoke --project <slug> --key-id <uuid>",
+    };
+  }
   return { name: "error", message: `unknown command: ${cmd}\n${HELP}` };
 }
 
@@ -73,6 +106,18 @@ function writeErr(text: string): void {
 function printMintedKeys(adminRaw: string, evaluateRaw: string): void {
   writeOut(`admin key (shown once): ${adminRaw}\n`);
   writeOut(`evaluate key (shown once): ${evaluateRaw}\n`);
+}
+
+function printKeyMetadata(key: {
+  readonly id: string;
+  readonly type: string;
+  readonly prefix: string;
+  readonly created_at: string;
+  readonly revoked_at: string | null;
+}): void {
+  writeOut(
+    `key: ${key.id} type=${key.type} prefix=${key.prefix} created_at=${key.created_at} revoked_at=${key.revoked_at ?? "-"}\n`,
+  );
 }
 
 export async function writeSeedKeysFile(
@@ -113,8 +158,13 @@ export async function runCli(argv: string[] = process.argv): Promise<number> {
       case "seed": {
         const result = await seedDemoProject(pool);
         writeOut(`seed: project ${result.project.slug} (${result.project.id})\n`);
+        if (result.adminKey !== undefined) {
+          writeOut(`admin key (shown once): ${result.adminKey.raw}\n`);
+        }
+        if (result.evaluateKey !== undefined) {
+          writeOut(`evaluate key (shown once): ${result.evaluateKey.raw}\n`);
+        }
         if (result.adminKey !== undefined && result.evaluateKey !== undefined) {
-          printMintedKeys(result.adminKey.raw, result.evaluateKey.raw);
           const keysPath = process.env.SEED_KEYS_PATH?.trim();
           if (keysPath !== undefined && keysPath.length > 0) {
             try {
@@ -127,18 +177,44 @@ export async function runCli(argv: string[] = process.argv): Promise<number> {
               writeErr(`seed: failed to write SEED_KEYS_PATH (${message})\n`);
             }
           }
-        } else {
+        }
+        if (result.adminKey === undefined && result.evaluateKey === undefined) {
           writeOut("seed: demo project already exists; keys not re-printed\n");
         }
         return 0;
       }
       case "projects-create": {
-        const created = await createProjectWithKeys(pool, {
-          name: command.nameFlag,
-          slug: command.slug,
-        });
+        const created = await createProjectWithKeys(
+          pool,
+          {
+            name: command.nameFlag,
+            slug: command.slug,
+          },
+          { requestId: `cli:projects-create:${randomUUID()}` },
+        );
         writeOut(`project: ${created.project.slug} (${created.project.id})\n`);
         printMintedKeys(created.adminKey.raw, created.evaluateKey.raw);
+        return 0;
+      }
+      case "keys-list": {
+        const listed = await listKeysByProjectSlug(pool, command.project);
+        if (listed.items.length === 0) {
+          writeOut(`keys: none for project ${command.project}\n`);
+        } else {
+          for (const key of listed.items) printKeyMetadata(key);
+        }
+        return 0;
+      }
+      case "keys-revoke": {
+        const revoked = await revokeKeyByProjectSlug(
+          pool,
+          command.project,
+          command.keyId,
+          `cli:keys-revoke:${randomUUID()}`,
+        );
+        writeOut(
+          `revoked: ${revoked.id} type=${revoked.type} prefix=${revoked.prefix} revoked_at=${revoked.revoked_at ?? "-"}\n`,
+        );
         return 0;
       }
       case "serve": {

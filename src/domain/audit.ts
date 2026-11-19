@@ -8,11 +8,13 @@ export const AUDIT_ACTIONS = [
   "rule.create",
   "rule.update",
   "rule.delete",
+  "key.create",
+  "key.revoke",
 ] as const;
 
 export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
-export const AUDIT_ENTITY_TYPES = ["flag", "env_config", "rule"] as const;
+export const AUDIT_ENTITY_TYPES = ["flag", "env_config", "rule", "key"] as const;
 export type AuditEntityType = (typeof AUDIT_ENTITY_TYPES)[number];
 
 export const AUDIT_LIST_DEFAULT_LIMIT = 50;

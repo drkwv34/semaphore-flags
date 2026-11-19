@@ -1,7 +1,18 @@
 import { createHash, timingSafeEqual } from "node:crypto";
 
+import { ValidationError } from "./errors.js";
+
 export const API_KEY_TYPES = ["admin", "evaluate"] as const;
 export type ApiKeyType = (typeof API_KEY_TYPES)[number];
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function parseKeyId(raw: string, path = "/id"): string {
+  if (!UUID_PATTERN.test(raw)) {
+    throw new ValidationError([{ path, message: "must be a uuid" }]);
+  }
+  return raw;
+}
 
 const RAW_KEY_PATTERN = /^sf_(admin|eval)_([0-9a-f]{8})_[0-9a-f]{64}$/;
 

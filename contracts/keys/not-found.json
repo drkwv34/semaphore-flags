@@ -1,0 +1,17 @@
+{
+  "name": "unknown or foreign key is not found",
+  "request": {
+    "method": "POST",
+    "url": "/v1/keys/11111111-1111-4111-8111-111111111111/revoke"
+  },
+  "response": {
+    "status": 404,
+    "body": {
+      "error": {
+        "code": "NOT_FOUND",
+        "message": "key not found",
+        "request_id": "r-1"
+      }
+    }
+  }
+}

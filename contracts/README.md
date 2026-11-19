@@ -6,6 +6,7 @@ Golden request/response fixtures that gate merges (FR-EVAL-005, NFR-MAINT-002).
 contracts/
   flags/               # admin flag/rule request+response examples
     <case>.json        # { "name", "request", "response" }
+  keys/                # GET /v1/keys and POST /v1/keys/:id/revoke examples
   evaluate/            # POST /v1/evaluate and /v1/evaluate-batch fixtures
     <case>.json        # { "name", "setup", "request", "response" }
   ops/                 # /healthz/deps (and related ops) fixtures
@@ -17,7 +18,9 @@ fixtures load every case, run the unit algorithm on `setup`, `inject` the HTTP r
 an in-memory snapshot source, and assert the response matches exactly. Required evaluate cases:
 kill switch, rule match, percentage boundaries (bucket 0 and 99), percentage 0, missing
 attributes, archived, not_found, batch with partial not_found, empty/oversize batch 400,
-admin-key 403, missing-key 401. Audit fixtures cover the list item shape and evaluate-key 403.
+admin-key 403, missing-key 401. Audit fixtures cover the list item shape and evaluate-key 403. Key fixtures cover metadata list,
+revoke, evaluate-key 403, and unknown-target 404. The audit list item schema allows a null
+`actor_key_id` for bootstrap and operator CLI events.
 
 `bucket-vectors.json` is the committed SHA-256 golden set (≥10 vectors, including buckets 0 and
 99). Never edit existing vectors; a diff means bucketing broke. Boundary fixtures use

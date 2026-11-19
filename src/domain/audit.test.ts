@@ -28,7 +28,10 @@ describe("audit parsers (FR-AUD-003)", () => {
 
   it("accepts closed-set filters and rejects unknown values", () => {
     expect(parseAuditAction("flag.create")).toBe("flag.create");
+    expect(parseAuditAction("key.create")).toBe("key.create");
+    expect(parseAuditAction("key.revoke")).toBe("key.revoke");
     expect(parseAuditEntityType("rule")).toBe("rule");
+    expect(parseAuditEntityType("key")).toBe("key");
     expect(() => parseAuditAction("flag.delete")).toThrow(ValidationError);
     expect(() => parseAuditEntityType("project")).toThrow(ValidationError);
   });

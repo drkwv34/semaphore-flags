@@ -7,6 +7,7 @@ export {
   insertApiKey,
   findApiKeyByPrefix,
   listApiKeysByProject,
+  lockApiKeyForProject,
   revokeApiKey,
 } from "./api-keys.js";
 export type { ApiKeyRecord } from "./api-keys.js";

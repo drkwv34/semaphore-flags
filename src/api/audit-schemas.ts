@@ -17,7 +17,7 @@ export const auditItemSchema = {
   ],
   properties: {
     id: { type: "string" },
-    actor_key_id: { type: "string" },
+    actor_key_id: { type: ["string", "null"] },
     action: { type: "string", enum: [...AUDIT_ACTIONS] },
     entity_type: { type: "string", enum: [...AUDIT_ENTITY_TYPES] },
     entity_id: { type: "string" },
