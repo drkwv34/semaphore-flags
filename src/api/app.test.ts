@@ -66,12 +66,44 @@ describe("GET /metrics", () => {
 });
 
 describe("unknown routes", () => {
-  it("returns 404 for GET /v1/__probe without a key", async () => {
+  it.each(["/", "/admin", "/v1/environments", "/v1/no-such-route", "/v1/__probe"] as const)(
+    "returns NOT_FOUND envelope for GET %s",
+    async (url) => {
+      const app = await buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" });
+
+      const generated = await app.inject({ method: "GET", url });
+      expect(generated.statusCode).toBe(404);
+      expect(generated.json()).toEqual({
+        error: {
+          code: "NOT_FOUND",
+          message: "Route not found",
+          request_id: generated.headers["x-request-id"],
+        },
+      });
+
+      const echoed = await app.inject({
+        method: "GET",
+        url,
+        headers: { "x-request-id": "req-fixed" },
+      });
+      expect(echoed.statusCode).toBe(404);
+      expect(echoed.headers["x-request-id"]).toBe("req-fixed");
+      expect(echoed.json()).toEqual({
+        error: {
+          code: "NOT_FOUND",
+          message: "Route not found",
+          request_id: "req-fixed",
+        },
+      });
+      await app.close();
+    },
+  );
+
+  it("does not use Fastify's default 404 body", async () => {
     const app = await buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" });
-
-    const res = await app.inject({ method: "GET", url: "/v1/__probe" });
-
-    expect(res.statusCode).toBe(404);
+    const res = await app.inject({ method: "GET", url: "/" });
+    expect(res.json()).not.toHaveProperty("statusCode");
+    expect(res.json()).not.toHaveProperty("error", "Not Found");
     await app.close();
   });
 });

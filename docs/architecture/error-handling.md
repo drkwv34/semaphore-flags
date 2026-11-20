@@ -14,17 +14,18 @@
 
 ## Error catalog
 
-| Error class           | `code`              | HTTP | When                                                      |
-| --------------------- | ------------------- | ---- | --------------------------------------------------------- |
-| `ValidationError`     | `VALIDATION_FAILED` | 400  | Schema or invariant failure; carries `fields[]`           |
-| `UnauthorizedError`   | `UNAUTHORIZED`      | 401  | Missing, malformed, unknown or revoked key                |
-| `ForbiddenError`      | `FORBIDDEN`         | 403  | Valid key of the wrong type (evaluate key on admin route) |
-| `NotFoundError`       | `NOT_FOUND`         | 404  | Admin route addressing a missing entity                   |
-| `ConflictError`       | `CONFLICT`          | 409  | Unique violation (flag key, env key, rule priority)       |
-| `NotImplementedError` | `NOT_IMPLEMENTED`   | 501  | Authenticated placeholder for not-yet-built routes        |
-| `UnavailableError`    | `UNAVAILABLE`       | 503  | Postgres unreachable on `/readyz`                         |
-| Fastify 4xx           | `INVALID_REQUEST`   | 4xx  | Unsupported media type, body too large, bad JSON          |
-| anything else         | `INTERNAL`          | 500  | Bug or dependency failure                                 |
+| Error class           | `code`              | HTTP | When                                                                  |
+| --------------------- | ------------------- | ---- | --------------------------------------------------------------------- |
+| `ValidationError`     | `VALIDATION_FAILED` | 400  | Schema or invariant failure; carries `fields[]`                       |
+| `UnauthorizedError`   | `UNAUTHORIZED`      | 401  | Missing, malformed, unknown or revoked key                            |
+| `ForbiddenError`      | `FORBIDDEN`         | 403  | Valid key of the wrong type (evaluate key on admin route)             |
+| `NotFoundError`       | `NOT_FOUND`         | 404  | Admin route addressing a missing entity                               |
+| unmatched route       | `NOT_FOUND`         | 404  | No registered route; `setNotFoundHandler`, not Fastify's default body |
+| `ConflictError`       | `CONFLICT`          | 409  | Unique violation (flag key, env key, rule priority)                   |
+| `NotImplementedError` | `NOT_IMPLEMENTED`   | 501  | Authenticated placeholder for not-yet-built routes                    |
+| `UnavailableError`    | `UNAVAILABLE`       | 503  | Postgres unreachable on `/readyz`                                     |
+| Fastify 4xx           | `INVALID_REQUEST`   | 4xx  | Unsupported media type, body too large, bad JSON                      |
+| anything else         | `INTERNAL`          | 500  | Bug or dependency failure                                             |
 
 Planned, added with the proposal that needs them: `RATE_LIMITED` (429, only if a rate-limit
 proposal is approved). Evaluate-path `UNAVAILABLE` when Postgres is down (no cached snapshot yet)
@@ -47,7 +48,10 @@ status. Codes are API surface: adding one needs an OpenSpec delta; renaming one 
 ```
 
 `fields` appears only for validation errors. `message` is human-readable and may change;
-clients branch on `code`.
+clients branch on `code`. Unmatched routes (`GET /`, `GET /admin`, `GET /v1/environments`,
+unknown `/v1/…` paths) use this envelope with `code` `NOT_FOUND` and echo `request_id` on
+`x-request-id`. They are not Fastify's `{ message, error, statusCode }` body. Evaluate
+missing flags stay `200` `reason: "not_found"`; that is not a routing 404.
 
 ## Evaluate-specific rules
 

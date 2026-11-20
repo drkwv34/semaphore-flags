@@ -56,4 +56,23 @@ describe("error envelope", () => {
     });
     await app.close();
   });
+
+  it("returns NOT_FOUND envelope from the not-found handler", async () => {
+    const app = await buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" });
+    const res = await app.inject({
+      method: "GET",
+      url: "/no-such",
+      headers: { "x-request-id": "r-404" },
+    });
+    expect(res.statusCode).toBe(404);
+    expect(res.headers["x-request-id"]).toBe("r-404");
+    expect(res.json()).toEqual({
+      error: {
+        code: "NOT_FOUND",
+        message: "Route not found",
+        request_id: "r-404",
+      },
+    });
+    await app.close();
+  });
 });
