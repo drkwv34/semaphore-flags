@@ -27,6 +27,9 @@ Evaluate fixtures have this shape:
 ```
 
 `auth` is `evaluate`, `admin`, or `none`. `setup.salt` is the project salt used for hashing.
+Evaluate request bodies may use `env` (existing clients), `environment` (SRS alias), or both
+when the strings are equal. Neither field, or both with different values, is 400
+`VALIDATION_FAILED`. Response JSON is unchanged.
 
 ## Hash buckets 0 and 99
 

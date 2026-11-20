@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { compileSnapshot, type SnapshotSource } from "../domain/evaluate/index.js";
 import { ValidationError } from "../domain/errors.js";
-import { EVALUATE_BATCH_MAX_KEYS, evaluateBatch } from "./evaluate.js";
+import { EVALUATE_BATCH_MAX_KEYS, evaluateBatch, resolveEvaluateEnv } from "./evaluate.js";
 
 const PROJECT_ID = "11111111-1111-4111-8111-111111111111";
 
@@ -86,5 +86,53 @@ describe("evaluateBatch (FR-EVAL-003)", () => {
         flag_keys: ["NOPE"],
       }),
     ).rejects.toBeInstanceOf(ValidationError);
+  });
+});
+
+describe("resolveEvaluateEnv", () => {
+  it("uses env when only env is present", () => {
+    expect(resolveEvaluateEnv({ env: "prod" })).toBe("prod");
+  });
+
+  it("uses environment when only environment is present", () => {
+    expect(resolveEvaluateEnv({ environment: "staging" })).toBe("staging");
+  });
+
+  it("accepts both when they are equal", () => {
+    expect(resolveEvaluateEnv({ env: "prod", environment: "prod" })).toBe("prod");
+  });
+
+  it("rejects both when they differ", () => {
+    try {
+      resolveEvaluateEnv({ env: "prod", environment: "staging" });
+      expect.fail("expected ValidationError");
+    } catch (err) {
+      expect(err).toBeInstanceOf(ValidationError);
+      expect((err as ValidationError).fields).toEqual([
+        { path: "/env", message: "must match environment when both are provided" },
+        { path: "/environment", message: "must match env when both are provided" },
+      ]);
+    }
+  });
+
+  it("rejects when neither field is present", () => {
+    try {
+      resolveEvaluateEnv({});
+      expect.fail("expected ValidationError");
+    } catch (err) {
+      expect(err).toBeInstanceOf(ValidationError);
+      expect((err as ValidationError).fields).toEqual([
+        { path: "/env", message: "required unless environment is provided" },
+        { path: "/environment", message: "required unless env is provided" },
+      ]);
+    }
+  });
+
+  it("rejects non-string env", () => {
+    expect(() => resolveEvaluateEnv({ env: 1 })).toThrow(ValidationError);
+  });
+
+  it("rejects non-string environment", () => {
+    expect(() => resolveEvaluateEnv({ environment: true })).toThrow(ValidationError);
   });
 });

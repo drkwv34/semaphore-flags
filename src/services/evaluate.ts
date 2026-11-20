@@ -12,7 +12,8 @@ export const EVALUATE_BATCH_MAX_KEYS = 50;
 
 export interface EvaluateRequest {
   readonly flag_key: string;
-  readonly env: string;
+  readonly env?: string;
+  readonly environment?: string;
   readonly user: { id?: unknown; attrs?: unknown };
 }
 
@@ -21,9 +22,37 @@ export interface EvaluateResponse extends EvalResult {
 }
 
 export interface EvaluateBatchRequest {
-  readonly env: string;
+  readonly env?: string;
+  readonly environment?: string;
   readonly user: { id?: unknown; attrs?: unknown };
   readonly flag_keys: unknown;
+}
+
+export function resolveEvaluateEnv(input: {
+  readonly env?: unknown;
+  readonly environment?: unknown;
+}): string {
+  const envPresent = input.env !== undefined;
+  const aliasPresent = input.environment !== undefined;
+  if (!envPresent && !aliasPresent) {
+    throw new ValidationError([
+      { path: "/env", message: "required unless environment is provided" },
+      { path: "/environment", message: "required unless env is provided" },
+    ]);
+  }
+  if (envPresent && typeof input.env !== "string") {
+    throw new ValidationError([{ path: "/env", message: "must be a string" }]);
+  }
+  if (aliasPresent && typeof input.environment !== "string") {
+    throw new ValidationError([{ path: "/environment", message: "must be a string" }]);
+  }
+  if (envPresent && aliasPresent && input.env !== input.environment) {
+    throw new ValidationError([
+      { path: "/env", message: "must match environment when both are provided" },
+      { path: "/environment", message: "must match env when both are provided" },
+    ]);
+  }
+  return (envPresent ? input.env : input.environment) as string;
 }
 
 export type EvaluateBatchResponse = Record<string, EvaluateResponse>;
@@ -64,7 +93,7 @@ export async function evaluateFlag(
   input: EvaluateRequest,
 ): Promise<EvaluateResponse> {
   const flagKey = parseFlagKey(input.flag_key, "/flag_key");
-  const env = parseEnvKey(input.env, "/env");
+  const env = parseEnvKey(resolveEvaluateEnv(input), "/env");
   const user = parseEvalUser(input.user);
   const snapshot = await source.get(projectId, env);
   const result = evaluate(snapshot?.flags.get(flagKey), user, snapshot?.salt ?? "");
@@ -76,7 +105,7 @@ export async function evaluateBatch(
   projectId: string,
   input: EvaluateBatchRequest,
 ): Promise<EvaluateBatchResponse> {
-  const env = parseEnvKey(input.env, "/env");
+  const env = parseEnvKey(resolveEvaluateEnv(input), "/env");
   const user = parseEvalUser(input.user);
   const flagKeys = parseFlagKeys(input.flag_keys);
   const snapshot = await source.get(projectId, env);

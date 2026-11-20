@@ -1,27 +1,41 @@
 import { EVALUATION_REASONS } from "../domain/evaluate/index.js";
 import { errorResponses } from "./schemas.js";
 
+const evaluateUserSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["id"],
+  properties: {
+    id: { type: "string", minLength: 1, maxLength: 128 },
+    attrs: {
+      type: "object",
+      additionalProperties: {
+        anyOf: [{ type: "string" }, { type: "number" }, { type: "boolean" }, { type: "null" }],
+      },
+    },
+  },
+} as const;
+
+const envProperty = {
+  type: "string",
+  description:
+    "Environment key. Alias of environment. Provide env, environment, or both when they match.",
+} as const;
+
+const environmentProperty = {
+  type: "string",
+  description: "Alias of env. Same value as env when both are sent.",
+} as const;
+
 export const evaluateBodySchema = {
   type: "object",
   additionalProperties: false,
-  required: ["flag_key", "env", "user"],
+  required: ["flag_key", "user"],
   properties: {
     flag_key: { type: "string" },
-    env: { type: "string" },
-    user: {
-      type: "object",
-      additionalProperties: false,
-      required: ["id"],
-      properties: {
-        id: { type: "string", minLength: 1, maxLength: 128 },
-        attrs: {
-          type: "object",
-          additionalProperties: {
-            anyOf: [{ type: "string" }, { type: "number" }, { type: "boolean" }, { type: "null" }],
-          },
-        },
-      },
-    },
+    env: envProperty,
+    environment: environmentProperty,
+    user: evaluateUserSchema,
   },
 } as const;
 
@@ -42,23 +56,11 @@ export const evaluateErrorResponses = errorResponses;
 export const evaluateBatchBodySchema = {
   type: "object",
   additionalProperties: false,
-  required: ["env", "user", "flag_keys"],
+  required: ["user", "flag_keys"],
   properties: {
-    env: { type: "string" },
-    user: {
-      type: "object",
-      additionalProperties: false,
-      required: ["id"],
-      properties: {
-        id: { type: "string", minLength: 1, maxLength: 128 },
-        attrs: {
-          type: "object",
-          additionalProperties: {
-            anyOf: [{ type: "string" }, { type: "number" }, { type: "boolean" }, { type: "null" }],
-          },
-        },
-      },
-    },
+    env: envProperty,
+    environment: environmentProperty,
+    user: evaluateUserSchema,
     flag_keys: {
       type: "array",
       minItems: 1,

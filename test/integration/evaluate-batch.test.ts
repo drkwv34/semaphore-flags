@@ -252,4 +252,49 @@ describe("POST /v1/evaluate-batch (FR-EVAL-003, NFR-SEC-001)", () => {
       await app.close();
     });
   });
+
+  it("accepts environment as an alias of env", async () => {
+    await withTestPool(async (pool) => {
+      const created = await createProjectWithKeys(pool, {
+        name: "BatchAlias",
+        slug: "batch-alias",
+      });
+      const app = await buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { pool });
+      const evaluate = {
+        authorization: `Bearer ${created.evaluateKey.raw}`,
+        "content-type": "application/json",
+      };
+
+      const viaEnv = await app.inject({
+        method: "POST",
+        url: "/v1/evaluate-batch",
+        headers: evaluate,
+        payload: { env: "prod", user: { id: "u1" }, flag_keys: ["missing_flag"] },
+      });
+      const viaAlias = await app.inject({
+        method: "POST",
+        url: "/v1/evaluate-batch",
+        headers: evaluate,
+        payload: { environment: "prod", user: { id: "u1" }, flag_keys: ["missing_flag"] },
+      });
+      expect(viaAlias.statusCode).toBe(200);
+      expect(viaAlias.json()).toEqual(viaEnv.json());
+
+      const conflict = await app.inject({
+        method: "POST",
+        url: "/v1/evaluate-batch",
+        headers: evaluate,
+        payload: {
+          env: "prod",
+          environment: "staging",
+          user: { id: "u1" },
+          flag_keys: ["missing_flag"],
+        },
+      });
+      expect(conflict.statusCode).toBe(400);
+      expect(conflict.json()).toMatchObject({ error: { code: "VALIDATION_FAILED" } });
+
+      await app.close();
+    });
+  });
 });

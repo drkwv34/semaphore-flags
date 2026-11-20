@@ -6580,7 +6580,6 @@
                 "additionalProperties": false,
                 "required": [
                   "flag_key",
-                  "env",
                   "user"
                 ],
                 "properties": {
@@ -6588,7 +6587,12 @@
                     "type": "string"
                   },
                   "env": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Environment key. Alias of environment. Provide env, environment, or both when they match."
+                  },
+                  "environment": {
+                    "type": "string",
+                    "description": "Alias of env. Same value as env when both are sent."
                   },
                   "user": {
                     "type": "object",
@@ -7132,13 +7136,17 @@
                 "type": "object",
                 "additionalProperties": false,
                 "required": [
-                  "env",
                   "user",
                   "flag_keys"
                 ],
                 "properties": {
                   "env": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Environment key. Alias of environment. Provide env, environment, or both when they match."
+                  },
+                  "environment": {
+                    "type": "string",
+                    "description": "Alias of env. Same value as env when both are sent."
                   },
                   "user": {
                     "type": "object",
