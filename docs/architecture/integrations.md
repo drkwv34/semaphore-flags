@@ -43,8 +43,10 @@ no email and emits no webhooks.
 
 ## demo-client (Compose only)
 
-- `scripts/demo-client.ts`, run by the `demo-client` Compose service. It is a reference client,
-  not a shipped SDK (Appendix F). Node 22 type-stripping runs the TypeScript source in Compose.
+- `scripts/demo-client.ts`, run by the `demo-client` Compose service (opt-in profile `demo`).
+  Default `docker compose up --wait` does not start it; use `docker compose run --rm demo-client`.
+  It is a reference client, not a shipped SDK (Appendix F). Node 22 type-stripping runs the
+  TypeScript source in Compose.
 - It demonstrates the client contract we ask integrators to follow:
   - 150ms timeout per evaluate call (`AbortSignal.timeout`).
   - On timeout / network error / 5xx, apply the flag's `client_fallback`

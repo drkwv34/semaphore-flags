@@ -13,8 +13,9 @@ Commands:
 ```sh
 pnpm install --frozen-lockfile
 pnpm lint && pnpm typecheck && pnpm test && pnpm build
-docker compose up --build            # api + db
+docker compose up --build --wait     # migrate + seed + api + db
 docker compose --profile cache up    # + redis
+docker compose run --rm demo-client  # one-shot evaluate walkthrough
 ```
 
 OpenSpec (feature work):
