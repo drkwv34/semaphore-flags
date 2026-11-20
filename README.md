@@ -232,6 +232,8 @@ curl -sS -w '\n%{http_code}\n' -X POST \
   -d '{"flag_key":"checkout_v2","env":"dev","user":{"id":"u1","attrs":{"plan":"pro"}}}' \
   http://localhost:8080/v1/evaluate
 # 200 {"flag_key":"checkout_v2","value":true,"reason":"rule_match","variant":"on"}
+# `environment` is an alias of `env`; send one of them, or both when they match.
+# Different values, or neither field, is 400 VALIDATION_FAILED.
 ```
 
 Batch evaluate (evaluate key only; max 50 keys). Unknown keys are `not_found`; a partial miss
@@ -321,7 +323,7 @@ Fresh volume so seed prints keys and writes `.demo-keys/demo-keys.json`:
 docker compose down -v
 mkdir -p .demo-keys
 docker compose up --build --wait
-docker compose logs demo-client
+docker compose run --rm demo-client
 ```
 
 Expected lines (flag, subject, value, reason):
@@ -353,9 +355,19 @@ docker compose run --rm --no-deps demo-client
 # beta_ui demo_in true rule_match
 ```
 
-`demo-client` is `scripts/demo-client.ts`. It reads `SEMAPHORE_URL` and
-`SEMAPHORE_EVALUATE_KEY` (Compose interpolates `DEMO_EVALUATE_KEY` from `.env`) and falls back
-to `SEED_KEYS_PATH` (`.demo-keys/demo-keys.json`). No secrets are committed.
+`demo-client` is `scripts/demo-client.ts`, opt-in behind Compose profile `demo`. Default
+`docker compose up --build --wait` starts migrate, seed, api, and db only so `--wait` exits 0.
+Run the client explicitly with `docker compose run --rm demo-client` (or
+`docker compose --profile demo up`). It reads `SEMAPHORE_URL` and `SEMAPHORE_EVALUATE_KEY`
+(Compose interpolates `DEMO_EVALUATE_KEY` from `.env`) and falls back to `SEED_KEYS_PATH`
+(`.demo-keys/demo-keys.json`). No secrets are committed.
+
+With Redis:
+
+```sh
+API_REDIS_URL=redis://redis:6379 docker compose --profile cache up --build --wait
+# equivalent: --profile redis
+```
 
 ## Client integration
 
@@ -426,9 +438,10 @@ REDIS_URL=redis://localhost:6379 pnpm test:integration
 
 CI runs lint → format → README client-docs check → typecheck → unit → integration → contract
 (Postgres 16 + Redis 7) → OpenAPI generate-and-lint → build → in-process evaluate microbench
-(soft), plus Compose validation, an image build (no push), a demo-client Compose smoke that
-asserts reason codes, and an isolated Compose smoke that the API process survives a Postgres
-outage (`scripts/check-database-outage.sh`). Contract fixtures: [`docs/contracts.md`](docs/contracts.md).
+(soft), plus Compose validation, an image build (no push), a README `docker compose up --build
+--wait` smoke (`scripts/check-compose-startup.sh`), a demo-client Compose smoke that asserts
+reason codes, and an isolated Compose smoke that the API process survives a Postgres outage
+(`scripts/check-database-outage.sh`). Contract fixtures: [`docs/contracts.md`](docs/contracts.md).
 
 ## Repository metadata
 

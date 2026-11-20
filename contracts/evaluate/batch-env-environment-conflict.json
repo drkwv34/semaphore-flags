@@ -1,0 +1,33 @@
+{
+  "name": "batch env and environment conflict is 400",
+  "auth": "evaluate",
+  "setup": {
+    "salt": "fixture-salt",
+    "env": "prod",
+    "flags": []
+  },
+  "request": {
+    "method": "POST",
+    "url": "/v1/evaluate-batch",
+    "body": {
+      "env": "prod",
+      "environment": "staging",
+      "user": { "id": "user-76" },
+      "flag_keys": ["kill_switch"]
+    }
+  },
+  "response": {
+    "status": 400,
+    "body": {
+      "error": {
+        "code": "VALIDATION_FAILED",
+        "message": "Request validation failed",
+        "request_id": "fixture",
+        "fields": [
+          { "path": "/env", "message": "must match environment when both are provided" },
+          { "path": "/environment", "message": "must match env when both are provided" }
+        ]
+      }
+    }
+  }
+}

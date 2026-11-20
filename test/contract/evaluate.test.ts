@@ -126,16 +126,22 @@ describe("evaluate contract fixtures (FR-EVAL-001/002/004)", () => {
       "admin key is forbidden on evaluate-batch",
       "archived flag is false",
       "batch empty flag_keys is 400",
+      "batch env and environment conflict is 400",
       "batch fifty-one keys is 400",
       "batch partial not_found is 200",
       "bucket 0 is in at percentage 1",
       "bucket 99 is out at percentage 99",
+      "env and environment conflict is 400",
+      "env and environment equal is accepted",
+      "environment alias matches env on evaluate",
+      "environment alias matches env on evaluate-batch",
       "first matching rule wins",
       "kill switch disabled in prod",
       "missing attribute does not match",
       "missing flag is not_found",
       "missing key is unauthorized",
       "missing key is unauthorized on evaluate-batch",
+      "neither env nor environment is 400",
       "percentage 0 is everyone out after rules",
     ]);
 
@@ -158,7 +164,8 @@ describe("evaluate contract fixtures (FR-EVAL-001/002/004)", () => {
 
       if (fixture.response.status === 200 && fixture.request.url === "/v1/evaluate-batch") {
         const body = fixture.request.body as {
-          env: string;
+          env?: string;
+          environment?: string;
           user: { id?: unknown; attrs?: unknown };
           flag_keys: string[];
         };
@@ -181,7 +188,8 @@ describe("evaluate contract fixtures (FR-EVAL-001/002/004)", () => {
       } else if (fixture.response.status === 200) {
         const body = fixture.request.body as {
           flag_key: string;
-          env: string;
+          env?: string;
+          environment?: string;
           user: { id?: unknown; attrs?: unknown };
         };
         const user = parseEvalUser(body.user);
@@ -198,9 +206,12 @@ describe("evaluate contract fixtures (FR-EVAL-001/002/004)", () => {
         expect(await schemaStatus(evaluateBodySchema, fixture.request.body)).toBe(200);
         expect(await responseAccepted(evaluateResponseSchema, fixture.response.body)).toBe(true);
       } else {
-        if (fixture.request.url === "/v1/evaluate-batch") {
+        if (
+          fixture.request.url === "/v1/evaluate-batch" &&
+          (fixture.name.includes("flag_keys is 400") || fixture.name.includes("fifty-one"))
+        ) {
           const status = await schemaStatus(evaluateBatchBodySchema, fixture.request.body);
-          if (fixture.response.status === 400) expect(status).toBe(400);
+          expect(status).toBe(400);
         }
         expect(await responseAccepted(errorEnvelopeSchema, fixture.response.body)).toBe(true);
       }

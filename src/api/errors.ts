@@ -88,13 +88,7 @@ export function mapError(err: unknown): Mapped {
   return { status: 500, code: "INTERNAL", message: "Internal server error" };
 }
 
-export function errorHandler(err: unknown, request: FastifyRequest, reply: FastifyReply): void {
-  const mapped = mapError(err);
-  if (mapped.status >= 500) {
-    request.log.error({ err }, "unhandled error");
-  } else {
-    request.log.info({ code: mapped.code, status: mapped.status }, "request rejected");
-  }
+function sendErrorBody(request: FastifyRequest, reply: FastifyReply, mapped: Mapped): void {
   const body: ErrorBody = {
     error: {
       code: mapped.code,
@@ -104,4 +98,23 @@ export function errorHandler(err: unknown, request: FastifyRequest, reply: Fasti
     },
   };
   void reply.status(mapped.status).send(body);
+}
+
+export function notFoundHandler(request: FastifyRequest, reply: FastifyReply): void {
+  request.log.info({ code: "NOT_FOUND", status: 404 }, "request rejected");
+  sendErrorBody(request, reply, {
+    status: 404,
+    code: "NOT_FOUND",
+    message: "Route not found",
+  });
+}
+
+export function errorHandler(err: unknown, request: FastifyRequest, reply: FastifyReply): void {
+  const mapped = mapError(err);
+  if (mapped.status >= 500) {
+    request.log.error({ err }, "unhandled error");
+  } else {
+    request.log.info({ code: mapped.code, status: mapped.status }, "request rejected");
+  }
+  sendErrorBody(request, reply, mapped);
 }

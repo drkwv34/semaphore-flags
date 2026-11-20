@@ -12,6 +12,7 @@ skip coverage theater on glue code.
 | Integration | `test/integration/`                                        | Postgres (+ Redis) service containers  | every push             |
 | Bench       | `scripts/bench-evaluate.mjs` + `scripts/bench-evaluate.sh` | in-process / Compose                   | soft (warn, not fail)  |
 | Outage      | `scripts/check-database-outage.sh`                         | isolated Compose (real API process)    | every push             |
+| Startup     | `scripts/check-compose-startup.sh`                         | README `up --wait` + explicit demo     | every push             |
 
 Vitest projects: `unit`, `contract`, `integration` (see `vitest.config.ts`). `pnpm test` runs
 unit + contract. `pnpm test:integration` needs `DATABASE_URL` and a Postgres 16 instance.
@@ -79,3 +80,6 @@ and prints p99 vs 10ms; it must not fail the job on shared runners. A separate d
 Compose smoke job asserts reason codes (`disabled`, `rule_match`, percentage) after seed. An
 isolated Compose job (`scripts/check-database-outage.sh`) asserts the API process survives a
 Postgres outage (same container, `/healthz` 200, `/readyz` 503, recovery without restart).
+`scripts/check-compose-startup.sh` asserts the README `docker compose up --build --wait`
+command exits 0 (default, `--profile cache`, `--profile redis`) and that an explicit
+`demo-client` run prints seeded reason codes.

@@ -1,9 +1,11 @@
 name: semaphore-flags
 
 # Local development only. Credentials below are throwaway defaults, not secrets.
-#   docker compose up --build                  migrate + seed + api + db + demo-client
-#   docker compose --profile cache up --build  + redis (set API_REDIS_URL=redis://redis:6379)
-#   docker compose --profile redis up --build  same as --profile cache
+#   docker compose up --build --wait                 migrate + seed + api + db
+#   docker compose --profile cache up --build --wait + redis (set API_REDIS_URL=redis://redis:6379)
+#   docker compose --profile redis up --build --wait same as --profile cache
+#   docker compose run --rm demo-client              one-shot evaluate walkthrough
+#   docker compose --profile demo up --build         same client via the demo profile
 #
 # migrate and seed are one-shot. api runs `serve` only so a later restart with
 # Postgres down still binds the port (/healthz 200, /readyz 503).
@@ -100,6 +102,7 @@ services:
 
   demo-client:
     image: node:22-alpine
+    profiles: ["demo"]
     working_dir: /demo
     command: ["node", "--experimental-strip-types", "--no-warnings", "demo-client.ts"]
     environment:
