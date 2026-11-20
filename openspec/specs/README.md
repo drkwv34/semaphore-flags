@@ -2,16 +2,16 @@
 
 One folder per capability, each with a `spec.md` describing behavior that is **shipped on `main`**. Requirements appear here only after a change that implements them is merged and archived.
 
-| Capability                       | Folder             | SRS requirements                                                                                       | Status                                                                                                                                          |
-| -------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Projects, API keys, environments | `projects-keys/`   | FR-PROJ-001..003, NFR-SEC-001                                                                          | Project + salt, admin vs evaluate keys, default envs, metadata list and revoke                                                                  |
-| Flags                            | `flags/`           | FR-FLAG-001..004                                                                                       | Boolean flags, per-env config, `client_fallback`, soft archive                                                                                  |
-| Targeting rules                  | `targeting-rules/` | FR-RULE-001..004                                                                                       | Priority-ordered predicates; missing attribute is non-match                                                                                     |
-| Evaluation                       | `evaluation/`      | FR-EVAL-001..005                                                                                       | Single + batch HTTP; FR-EVAL-002 order; goldens gate merges                                                                                     |
-| Audit                            | `audit/`           | FR-AUD-001..004                                                                                        | Same-tx append-only `audit_events` including `key.*`; nullable CLI actor; cursor list                                                           |
-| Caching                          | `caching/`         | FR-CACHE-001..004                                                                                      | Redis compiled snapshot TTL 60s; invalidate after commit; Redis-down degrades                                                                   |
-| Ops                              | `ops/`             | FR-OPS-001..003, FR-ERR, NFR-OBS-001, NFR-MAINT-001..002, NFR-PERF-001..002, NFR-DOC-001, NFR-PORT-001 | Health, metrics, OpenAPI, CI pyramid, Compose demo-client, README platform story. NFR-PERF-001/002 are local/soft benches, not failing CI gates |
-| Client guidance                  | `client-guidance/` | FR-DOC-001, NFR-DOC-001                                                                                | README Client integration: timeouts, fallback, kill-switch fail-closed, ≤10s cache, never block boot                                            |
+| Capability                       | Folder             | SRS requirements                                                                                       | Status                                                                                                                                |
+| -------------------------------- | ------------------ | ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Projects, API keys, environments | `projects-keys/`   | FR-PROJ-001..003, NFR-SEC-001                                                                          | Project + salt, admin vs evaluate keys, default envs, metadata list and revoke                                                        |
+| Flags                            | `flags/`           | FR-FLAG-001..004                                                                                       | Boolean flags, per-env config, `client_fallback`, soft archive                                                                        |
+| Targeting rules                  | `targeting-rules/` | FR-RULE-001..004                                                                                       | Priority-ordered predicates; missing attribute is non-match                                                                           |
+| Evaluation                       | `evaluation/`      | FR-EVAL-001..005                                                                                       | Single + batch HTTP; `env`/`environment` alias; FR-EVAL-002 order; goldens gate merges                                                |
+| Audit                            | `audit/`           | FR-AUD-001..004                                                                                        | Same-tx append-only `audit_events` including `key.*`; nullable CLI actor; cursor list                                                 |
+| Caching                          | `caching/`         | FR-CACHE-001..004                                                                                      | Redis compiled snapshot TTL 60s; invalidate after commit; Redis-down degrades                                                         |
+| Ops                              | `ops/`             | FR-OPS-001..003, FR-ERR, NFR-OBS-001, NFR-MAINT-001..002, NFR-PERF-001..002, NFR-DOC-001, NFR-PORT-001 | Health, metrics, OpenAPI, CI pyramid, opt-in demo-client, POSIX evaluate bench, 404 envelope. NFR-PERF-001/002 are local/soft benches |
+| Client guidance                  | `client-guidance/` | FR-DOC-001, NFR-DOC-001                                                                                | README Client integration: timeouts, fallback, kill-switch fail-closed, ≤10s cache, never block boot                                  |
 
 Admin SPA, multivariate variants, experimentation stats, streaming/native SDKs, rule-builder UI, multi-region, hosted deploy, and `RATE_LIMITED` (429) are Should / out of MVP. See [`openspec/backlog/should-scope.md`](../backlog/should-scope.md).
 
@@ -27,6 +27,10 @@ Admin SPA, multivariate variants, experimentation stats, streaming/native SDKs, 
 8. ~~`add-pin-ready-closeout`~~ archived 2026-11-06.
 9. ~~`restore-database-outage-liveness`~~ archived 2026-11-18.
 10. ~~`add-key-lifecycle-auditing`~~ archived 2026-11-19.
+11. ~~`isolate-demo-client-execution`~~ archived 2026-11-20.
+12. ~~`make-evaluate-benchmark-portable`~~ archived 2026-11-20.
+13. ~~`normalize-route-not-found-errors`~~ archived 2026-11-20.
+14. ~~`support-environment-request-alias`~~ archived 2026-11-20.
 
 Format for a capability `spec.md`:
 

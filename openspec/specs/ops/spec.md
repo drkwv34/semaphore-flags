@@ -161,12 +161,22 @@ CI SHALL run lint, typecheck, unit, integration, contract, build, and a containe
 
 ### Requirement: HTTP evaluate bench is documented for Compose
 
-`scripts/bench-evaluate.sh` SHALL document how to measure HTTP evaluate p99 against a local Compose stack with a warm cache, targeting under 50ms. (NFR-PERF-002)
+`scripts/bench-evaluate.sh` SHALL measure HTTP evaluate p99 against a local Compose stack with a warm cache, targeting under 50ms, using only POSIX `sort` and POSIX `awk` (including mawk). It SHALL print measured mean and p99 in milliseconds. Non-200 evaluate responses MUST NOT be counted as successful samples. Missing `EVALUATE_KEY` SHALL exit non-zero. The script MAY warn when p99 is at or above 50ms and MUST NOT require gawk. (NFR-PERF-002)
 
 #### Scenario: Script documents the HTTP budget
 
 - **WHEN** an operator reads or runs `scripts/bench-evaluate.sh`
 - **THEN** the script states the warm-cache HTTP p99 target of 50ms and prints measured p99
+
+#### Scenario: mawk computes mean and p99
+
+- **WHEN** `awk` on PATH is mawk and the script is given a successful curl fixture of known times
+- **THEN** the process exits 0 and printed mean and p99 match a POSIX numeric sort of those samples using `idx = int(n * 0.99)` clamped to `1..n`
+
+#### Scenario: Failed HTTP is not a successful sample
+
+- **WHEN** an evaluate call returns a non-200 status
+- **THEN** the script exits non-zero and does not report that timing as a successful mean/p99 sample
 
 ### Requirement: README platform story
 
@@ -179,7 +189,7 @@ The README SHALL document the live platform: problem, why, demo, stack (TypeScri
 
 ### Requirement: Compose demo-client evaluates seeded flags
 
-Compose SHALL include a `demo-client` service that evaluates the seeded demo project for subjects `demo_in`, `demo_out`, and at least one random id against `kill_payments` in `prod` and `beta_ui` in `staging`, printing flag, subject, value, and reason per line. (NFR-PORT-001)
+Compose SHALL include a `demo-client` service behind an opt-in profile `demo` that evaluates the seeded demo project for subjects `demo_in`, `demo_out`, and at least one random id against `kill_payments` in `prod` and `beta_ui` in `staging`, printing flag, subject, value, and reason per line. Default Compose up (no profile) SHALL NOT start `demo-client`. Operators SHALL run the client explicitly (`docker compose run --rm demo-client` or `--profile demo`). (NFR-PORT-001)
 
 #### Scenario: Seeded kill switch is disabled
 
@@ -195,6 +205,11 @@ Compose SHALL include a `demo-client` service that evaluates the seeded demo pro
 
 - **WHEN** demo-client evaluates `beta_ui` in `staging` for `demo_out` or a random id after a fresh seed
 - **THEN** the printed reason is `percentage_in` or `percentage_out`
+
+#### Scenario: Default Compose up does not run demo-client
+
+- **WHEN** an operator runs `docker compose up --build --wait` with no service targets and no profile
+- **THEN** migrate and seed complete, api becomes healthy, `demo-client` is not started, and the command exits 0
 
 ### Requirement: Demo-client uses timeout and fallback
 
@@ -250,3 +265,60 @@ Compose SHALL run migrate and seed as one-shot bootstrap, in that order, separat
 
 - **WHEN** bootstrap has already succeeded and an operator restarts only the api service while Postgres is absent
 - **THEN** the api process starts `serve` without re-running migrate or seed, `GET /healthz` returns 200, and `GET /readyz` returns 503
+
+### Requirement: README Compose startup waits on persistent services
+
+The README local-run command `docker compose up --build --wait` SHALL exit 0 after bootstrap and api health, including when Redis is enabled with `--profile cache` or `--profile redis`. A failed migrate or seed SHALL still fail that first start. (NFR-PORT-001, FR-OPS-001)
+
+#### Scenario: Default up exits 0
+
+- **WHEN** an operator follows the README (`cp .env.example .env`, `mkdir -p .demo-keys`, `docker compose up --build --wait`) against an empty volume
+- **THEN** the command exits 0 and `GET /healthz` on the published API port returns 200
+
+#### Scenario: Cache profile up exits 0
+
+- **WHEN** an operator runs `API_REDIS_URL=redis://redis:6379 docker compose --profile cache up --build --wait`
+- **THEN** the command exits 0 and Redis is running as part of that project
+
+#### Scenario: Redis profile alias up exits 0
+
+- **WHEN** an operator runs `API_REDIS_URL=redis://redis:6379 docker compose --profile redis up --build --wait`
+- **THEN** the command exits 0 the same way as `--profile cache`
+
+### Requirement: CI checks README Compose startup and demo-client
+
+CI SHALL keep every existing job and SHALL additionally run an isolated Compose smoke of the README `docker compose up --build --wait` command (default, cache, and redis profiles) plus an explicit demo-client run that asserts reason codes. Existing jobs MUST NOT be skipped or loosened. (NFR-MAINT-001, NFR-PORT-001)
+
+#### Scenario: README startup smoke is required
+
+- **WHEN** a pull request runs CI
+- **THEN** a named job runs `scripts/check-compose-startup.sh` (or equivalent) and a failure of that job fails the workflow
+
+#### Scenario: Existing demo smoke remains
+
+- **WHEN** CI runs on a pull request
+- **THEN** the existing demo-client compose smoke job still starts `api`/`db` and runs `docker compose run --rm --no-deps demo-client` with reason-code assertions
+
+### Requirement: Unknown routes use the error envelope
+
+An HTTP request that matches no registered route SHALL return HTTP 404 with the common error envelope and code `NOT_FOUND`, a safe message, and `request_id` echoed on `x-request-id`. Fastify’s default `{ message, error, statusCode }` body MUST NOT be returned. (FR-ERR-001, FR-OPS-003)
+
+#### Scenario: Unregistered path is NOT_FOUND
+
+- **WHEN** a client calls `GET /`, `GET /admin`, `GET /v1/environments`, or `GET /v1/no-such-route`
+- **THEN** the response is 404 with `error.code` `NOT_FOUND`, a safe `error.message`, and `error.request_id` equal to the `x-request-id` response header
+
+#### Scenario: Incoming request id is echoed on 404
+
+- **WHEN** a client sends `x-request-id` on a request to an unregistered path
+- **THEN** the 404 body `error.request_id` and the `x-request-id` header both equal that value
+
+#### Scenario: Docs remain available
+
+- **WHEN** a client calls `GET /docs` without an API key
+- **THEN** the response is 200 HTML
+
+#### Scenario: Validation is still 400
+
+- **WHEN** a registered route receives a body that fails JSON schema validation
+- **THEN** the response is 400 `VALIDATION_FAILED` and not 404
