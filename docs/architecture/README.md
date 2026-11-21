@@ -95,6 +95,8 @@ in repositories.
 | 16  | Audit list is cursor-based (`created_at DESC, id DESC`)                   | Append-only log; offset would skip/duplicate when new rows land                  |
 | 17  | Audit list index `(project_id, created_at DESC, id DESC)`                 | Matches the list ORDER BY; replaces the single-column `project_id` index         |
 | 18  | `/healthz/deps` statuses `ok\|degraded\|disabled` (redis may be disabled) | Day 6 brief; stub `error`/`not_implemented` was never a client contract          |
+| 24  | JSON bodies do not coerce types; query/params still coerce                | Ajv `anyOf` + `coerceTypes` turned numeric/boolean `user.attrs` into strings     |
+| 25  | Postgres connection errors map to 503 `UNAVAILABLE` in `mapError`         | Auth and admin returned 500 `INTERNAL` when the database was unreachable         |
 
 New decisions are recorded here (one row) and justified in the OpenSpec proposal that introduced
 them.

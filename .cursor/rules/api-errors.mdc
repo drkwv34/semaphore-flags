@@ -12,7 +12,9 @@ Full detail: `docs/architecture/error-handling.md`, `docs/architecture/api-conve
 
 - Product routes under `/v1`; ops routes unversioned. JSON fields `snake_case`.
 - Every route declares JSON schemas for input and `response` (success + error envelope);
-  `additionalProperties: false` on bodies. Schemas feed validation, serialization and OpenAPI.
+  `additionalProperties: false` on bodies. JSON bodies do not coerce types (so `user.attrs`
+  numbers/booleans stay numbers/booleans). Query/params still coerce (e.g. audit `limit`).
+  Schemas feed validation, serialization and OpenAPI.
 - Handlers: parse → service call → map to response. No SQL, no business logic.
 - Auth: `Authorization: Bearer <key>`; route declares required key type (`admin` | `evaluate`).
   401 missing/invalid/revoked, 403 wrong type. `project_id` comes from the key only.
@@ -26,6 +28,9 @@ Full detail: `docs/architecture/error-handling.md`, `docs/architecture/api-conve
 - `src/api/errors.ts` is the only place that maps errors to status codes. Add new mappings there
   plus a test in `errors.test.ts`.
 - Envelope: `{ error: { code, message, request_id, fields? } }`. Clients branch on `code`.
+- Postgres connection errors (`ENOTFOUND`, `ECONNREFUSED`, `ECONNRESET`, terminated
+  connection, pool timeout) → 503 `UNAVAILABLE`; log `warn`. `/healthz` and `/readyz`
+  keep their own contracts.
 - Unknown errors → 500 `INTERNAL` with a generic message; log the real error.
 - Evaluate: missing flag is 200 `not_found`, never 404. Batch returns per-key entries.
 

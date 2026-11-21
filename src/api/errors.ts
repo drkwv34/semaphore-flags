@@ -52,6 +52,31 @@ interface Mapped {
   fields?: readonly FieldError[];
 }
 
+const CONNECTION_ERRNOS = new Set([
+  "ENOTFOUND",
+  "ECONNREFUSED",
+  "ECONNRESET",
+  "ETIMEDOUT",
+  "EPIPE",
+]);
+
+function errorCode(err: unknown): string | undefined {
+  if (typeof err === "object" && err !== null && "code" in err && typeof err.code === "string") {
+    return err.code;
+  }
+  return undefined;
+}
+
+export function isPostgresConnectionError(err: unknown): boolean {
+  const code = errorCode(err);
+  if (code !== undefined && CONNECTION_ERRNOS.has(code)) return true;
+  const message = err instanceof Error ? err.message : "";
+  return (
+    /connection terminated/i.test(message) ||
+    /timeout exceeded when trying to connect/i.test(message)
+  );
+}
+
 function isFastifyError(err: unknown): err is FastifyError {
   return err instanceof Error && "code" in err && typeof err.code === "string";
 }
@@ -84,6 +109,10 @@ export function mapError(err: unknown): Mapped {
     return { status: err.statusCode, code: "INVALID_REQUEST", message: err.message };
   }
 
+  if (isPostgresConnectionError(err)) {
+    return { status: 503, code: "UNAVAILABLE", message: "Service unavailable" };
+  }
+
   // Unknown errors never leak internals to the client.
   return { status: 500, code: "INTERNAL", message: "Internal server error" };
 }
@@ -111,7 +140,9 @@ export function notFoundHandler(request: FastifyRequest, reply: FastifyReply): v
 
 export function errorHandler(err: unknown, request: FastifyRequest, reply: FastifyReply): void {
   const mapped = mapError(err);
-  if (mapped.status >= 500) {
+  if (mapped.code === "UNAVAILABLE") {
+    request.log.warn({ err, code: mapped.code, status: mapped.status }, "dependency unavailable");
+  } else if (mapped.status >= 500) {
     request.log.error({ err }, "unhandled error");
   } else {
     request.log.info({ code: mapped.code, status: mapped.status }, "request rejected");
