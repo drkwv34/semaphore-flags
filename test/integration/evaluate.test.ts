@@ -278,4 +278,69 @@ describe("POST /v1/evaluate (FR-EVAL-001/002, FR-ERR-001, NFR-SEC-001)", () => {
       await app.close();
     });
   });
+
+  it("keeps JSON number and boolean attrs for targeting rules", async () => {
+    await withTestPool(async (pool) => {
+      const created = await createProjectWithKeys(pool, { name: "Typed", slug: "eval-typed" });
+      const app = await buildApp({ NODE_ENV: "test", LOG_LEVEL: "info" }, { pool });
+      const admin = {
+        authorization: `Bearer ${created.adminKey.raw}`,
+        "content-type": "application/json",
+      };
+      const evaluate = {
+        authorization: `Bearer ${created.evaluateKey.raw}`,
+        "content-type": "application/json",
+      };
+
+      expect(
+        (
+          await app.inject({
+            method: "POST",
+            url: "/v1/flags",
+            headers: admin,
+            payload: { key: "age_gate", default_value: false },
+          })
+        ).statusCode,
+      ).toBe(201);
+      expect(
+        (
+          await app.inject({
+            method: "PUT",
+            url: "/v1/flags/age_gate/envs/prod",
+            headers: admin,
+            payload: {
+              enabled: true,
+              percentage: 0,
+              rules: [
+                { priority: 0, attribute: "user.age", op: "gte", value: 18, serve: true },
+                { priority: 1, attribute: "user.age", op: "eq", value: "18", serve: false },
+              ],
+            },
+          })
+        ).statusCode,
+      ).toBe(200);
+
+      const numeric = await app.inject({
+        method: "POST",
+        url: "/v1/evaluate",
+        headers: evaluate,
+        payload: { flag_key: "age_gate", env: "prod", user: { id: "u1", attrs: { age: 18 } } },
+      });
+      expect(numeric.statusCode).toBe(200);
+      expect(numeric.json()).toMatchObject({ value: true, reason: "rule_match" });
+
+      const batch = await app.inject({
+        method: "POST",
+        url: "/v1/evaluate-batch",
+        headers: evaluate,
+        payload: { env: "prod", user: { id: "u1", attrs: { age: 18 } }, flag_keys: ["age_gate"] },
+      });
+      expect(batch.statusCode).toBe(200);
+      expect(batch.json()).toMatchObject({
+        age_gate: { value: true, reason: "rule_match" },
+      });
+
+      await app.close();
+    });
+  });
 });

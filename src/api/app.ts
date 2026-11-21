@@ -28,6 +28,7 @@ import { registerEvaluateRoutes } from "./evaluate.js";
 import { registerFlagRoutes } from "./flags.js";
 import { registerKeyRoutes } from "./keys.js";
 import { errorResponses } from "./schemas.js";
+import { requestValidatorCompiler } from "./validator.js";
 
 export const REQUEST_ID_HEADER = "x-request-id";
 
@@ -91,6 +92,8 @@ export async function buildApp(
     }),
     genReqId: () => randomUUID(),
   });
+
+  app.setValidatorCompiler(requestValidatorCompiler);
 
   app.decorateRequest("auth", null);
   app.decorateRequest("logFields", undefined);
