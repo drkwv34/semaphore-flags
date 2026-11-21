@@ -14,22 +14,24 @@
 
 ## Error catalog
 
-| Error class           | `code`              | HTTP | When                                                                  |
-| --------------------- | ------------------- | ---- | --------------------------------------------------------------------- |
-| `ValidationError`     | `VALIDATION_FAILED` | 400  | Schema or invariant failure; carries `fields[]`                       |
-| `UnauthorizedError`   | `UNAUTHORIZED`      | 401  | Missing, malformed, unknown or revoked key                            |
-| `ForbiddenError`      | `FORBIDDEN`         | 403  | Valid key of the wrong type (evaluate key on admin route)             |
-| `NotFoundError`       | `NOT_FOUND`         | 404  | Admin route addressing a missing entity                               |
-| unmatched route       | `NOT_FOUND`         | 404  | No registered route; `setNotFoundHandler`, not Fastify's default body |
-| `ConflictError`       | `CONFLICT`          | 409  | Unique violation (flag key, env key, rule priority)                   |
-| `NotImplementedError` | `NOT_IMPLEMENTED`   | 501  | Authenticated placeholder for not-yet-built routes                    |
-| `UnavailableError`    | `UNAVAILABLE`       | 503  | Postgres unreachable on `/readyz`                                     |
-| Fastify 4xx           | `INVALID_REQUEST`   | 4xx  | Unsupported media type, body too large, bad JSON                      |
-| anything else         | `INTERNAL`          | 500  | Bug or dependency failure                                             |
+| Error class           | `code`              | HTTP | When                                                                   |
+| --------------------- | ------------------- | ---- | ---------------------------------------------------------------------- |
+| `ValidationError`     | `VALIDATION_FAILED` | 400  | Schema or invariant failure; carries `fields[]`                        |
+| `UnauthorizedError`   | `UNAUTHORIZED`      | 401  | Missing, malformed, unknown or revoked key                             |
+| `ForbiddenError`      | `FORBIDDEN`         | 403  | Valid key of the wrong type (evaluate key on admin route)              |
+| `NotFoundError`       | `NOT_FOUND`         | 404  | Admin route addressing a missing entity                                |
+| unmatched route       | `NOT_FOUND`         | 404  | No registered route; `setNotFoundHandler`, not Fastify's default body  |
+| `ConflictError`       | `CONFLICT`          | 409  | Unique violation (flag key, env key, rule priority)                    |
+| `NotImplementedError` | `NOT_IMPLEMENTED`   | 501  | Authenticated placeholder for not-yet-built routes                     |
+| `UnavailableError`    | `UNAVAILABLE`       | 503  | Postgres unreachable (`/readyz`, evaluate snapshot, connection errors) |
+| Fastify 4xx           | `INVALID_REQUEST`   | 4xx  | Unsupported media type, body too large, bad JSON                       |
+| Postgres connection   | `UNAVAILABLE`       | 503  | `ENOTFOUND`, `ECONNREFUSED`, `ECONNRESET`, terminated, pool timeout    |
+| anything else         | `INTERNAL`          | 500  | Bug or other dependency failure                                        |
 
 Planned, added with the proposal that needs them: `RATE_LIMITED` (429, only if a rate-limit
-proposal is approved). Evaluate-path `UNAVAILABLE` when Postgres is down (no cached snapshot yet)
-is mapped in the evaluate handler.
+proposal is approved). Postgres connection failures on auth, evaluate, and admin routes map in
+`mapError` to 503 `UNAVAILABLE` (log `warn`). `/healthz` still does not call Postgres;
+`/readyz` still returns 503 when a ping fails.
 
 More specific codes (e.g. `FLAG_KEY_TAKEN`) may subclass a base error but must keep its HTTP
 status. Codes are API surface: adding one needs an OpenSpec delta; renaming one is **BREAKING**.
@@ -71,13 +73,13 @@ missing flags stay `200` `reason: "not_found"`; that is not a routing 404.
 | `23505` unique    | `ConflictError`                                                    |
 | `23503` FK        | `NotFoundError` or `ConflictError` depending on the side           |
 | `23514` check     | `ValidationError` (defense in depth; domain should have caught it) |
-| other             | rethrown as-is → 500                                               |
+| other             | rethrown as-is; connection errors become 503 `UNAVAILABLE` at HTTP |
 
 Never `catch` and swallow. If a `catch` does not rethrow, it must log and record why the error
 is safe to ignore (e.g. cache delete failure).
 
 ## Logging errors
 
-- 5xx: `error` level with the full `err` object.
+- 5xx: `error` level with the full `err` object, except 503 `UNAVAILABLE` which is `warn`.
 - 4xx: `info` level with `code` and `status` only; no request body.
-- Expected degradations (Redis down): `warn`, rate-limited to avoid log floods.
+- Expected degradations (Redis down, Postgres unreachable): `warn`, rate-limited for Redis.

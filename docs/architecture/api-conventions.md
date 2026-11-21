@@ -12,7 +12,9 @@
 - Pagination (audit list): cursor-based, `?limit=` (default 50, max 200) and `?cursor=`;
   response `{ items: [...], next_cursor: string | null }`. No offset pagination.
 - Every route declares Fastify JSON schemas for `body`/`params`/`querystring` and `response`.
-  Unknown body properties are rejected (`additionalProperties: false`).
+  Unknown body properties are rejected (`additionalProperties: false`). JSON bodies keep
+  declared types (no Ajv `coerceTypes`); query string and path params still coerce so
+  integer fields such as `?limit=` work.
 - Body limit: 64 KiB. Batch evaluate: `flag_keys` max 50 (FR-EVAL-003).
 - Handlers stay thin: parse → call a service → map to response. No SQL, no business rules.
 
