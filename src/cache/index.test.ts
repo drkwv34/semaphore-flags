@@ -65,6 +65,28 @@ describe("snapshot serialize (FR-CACHE-001)", () => {
     parsed.schema_version = SNAPSHOT_SCHEMA_VERSION + 1;
     expect(deserializeSnapshot(JSON.stringify(parsed))).toBeUndefined();
   });
+
+  it("round-trips a rule whose value is JSON null", () => {
+    const original = compileSnapshot({
+      projectId: PROJECT,
+      env: "dev",
+      salt: "salt",
+      flags: [
+        {
+          key: "null_eq",
+          archived: false,
+          defaultValue: false,
+          enabled: true,
+          percentage: 0,
+          rules: [{ attribute: "user.x", op: "eq", value: null, serve: true }],
+        },
+      ],
+    });
+    const restored = deserializeSnapshot(serializeSnapshot(original));
+    expect(restored?.flags.get("null_eq")?.rules).toEqual([
+      { attribute: "user.x", op: "eq", value: null, serve: true },
+    ]);
+  });
 });
 
 describe("cacheKey", () => {

@@ -70,4 +70,13 @@ describe("matchRule (FR-RULE-003)", () => {
     expect(matchRule(rule("eq", null, "user.plan"), withNull)).toBe(true);
     expect(matchRule(rule("eq", null, "user.plan"), { id: "u" })).toBe(false);
   });
+
+  it("neq null matches a present non-null, not a missing attr", () => {
+    const withVal = { id: "u", attrs: { plan: "pro" } };
+    expect(matchRule(rule("neq", null, "user.plan"), withVal)).toBe(true);
+    expect(matchRule(rule("neq", null, "user.plan"), { id: "u", attrs: { plan: null } })).toBe(
+      false,
+    );
+    expect(matchRule(rule("neq", null, "user.plan"), { id: "u" })).toBe(false);
+  });
 });

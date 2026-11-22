@@ -40,4 +40,5 @@ export { insertAuditEvent, listAuditEvents, listAuditPage } from "./audit.js";
 export type { AuditEvent, AuditPageQuery } from "./audit.js";
 export { pingPostgres } from "./health.js";
 export { translatePgError } from "./pg-error.js";
-export { loadEnvSnapshot, postgresSnapshotSource } from "./snapshots.js";
+export { compiledRuleFromJoinedRow, loadEnvSnapshot, postgresSnapshotSource } from "./snapshots.js";
+export type { JoinedRuleRow } from "./snapshots.js";
