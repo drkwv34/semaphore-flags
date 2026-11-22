@@ -23,6 +23,30 @@ interface SnapshotRow {
   serve: boolean | null;
 }
 
+export interface JoinedRuleRow {
+  readonly attribute: string | null;
+  readonly op: RuleOp | null;
+  readonly value: JsonPrimitive | JsonPrimitive[] | null;
+  readonly serve: boolean | null;
+}
+
+/**
+ * Map a LEFT JOIN rules row onto a compiled rule. JSON null is a valid scalar
+ * value for eq/neq; node-pg also uses JS null for SQL NULL on the empty join,
+ * so presence is attribute/op/serve (all NOT NULL on a real rule row).
+ */
+export function compiledRuleFromJoinedRow(row: JoinedRuleRow): CompiledRule | undefined {
+  if (row.attribute === null || row.op === null || row.serve === null) {
+    return undefined;
+  }
+  return {
+    attribute: row.attribute,
+    op: row.op,
+    value: row.value as JsonPrimitive | readonly JsonPrimitive[],
+    serve: row.serve,
+  };
+}
+
 interface MutableFlag {
   key: string;
   archived: boolean;
@@ -77,13 +101,9 @@ export async function loadEnvSnapshot(
       };
       flags.set(row.flag_key, flag);
     }
-    if (row.attribute !== null && row.op !== null && row.value !== null && row.serve !== null) {
-      flag.rules.push({
-        attribute: row.attribute,
-        op: row.op,
-        value: row.value,
-        serve: row.serve,
-      });
+    const rule = compiledRuleFromJoinedRow(row);
+    if (rule !== undefined) {
+      flag.rules.push(rule);
     }
   }
 

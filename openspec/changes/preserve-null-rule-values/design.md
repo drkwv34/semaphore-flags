@@ -53,7 +53,7 @@ row, no value-null filter) and already returns the rule. Domain predicates and `
 ### 3. Redis path is verify-then-touch
 
 - **Choice:** `isJsonPrimitive` already accepts `null`; `JSON.stringify` preserves `"value":
-  null`. Add a serialize round-trip assertion and an integration assertion that the Redis
+null`. Add a serialize round-trip assertion and an integration assertion that the Redis
   payload still contains the rule. Change deserialize only if a test proves it drops `null`.
 - **Why:** The observed drop is on snapshot compile, before cache fill. Cache should keep
   whatever the snapshot holds.
